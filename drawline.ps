@@ -124,137 +124,114 @@
 	str dup charbytesproc splitstring /str exch def /c exch def
 } bind def
 
-% str height [ optdict ] <drawline> -
-% 	str:
-%		%%: %そのもの
-% 		%(): 続くnバイトを横書きする。全体で縦方向1文字送り扱い。
-% 		%!: 次の%!まで文字置換の対象としない。それぞれ縦1文字送り。
-% 		%@: 次の%@まで右90度回転して表示。
-%			元々の文字の横幅が縦方向の送り幅になる。
-%	optdict:
-%		/align ident
-%			/justify: 均等割り。長さが足りなければ文字間にスペースを入れる
-%				長さが長い場合は縮小される。
-%			/bottom: 下寄せ。
-%		/tab 辞書 (output)
-%			タブ位置を示す。
-%		/HeightString str
-%			ttfVerticalRotateShowに渡すHeightString。デフォルトは(fg)
-/drawline {
-	1 dict begin
-
-	% パラメーター取得
-	dup type /dicttype eq { /opt exch def } { /opt 0 dict def } ifelse
-	/height exch def
-	/str exch def
-	/hstr opt /HeightString (fg) defaultget def
-
-	% 文字列を分解して配列に、置換する文字列は置換。
-	/cc 0 def	% charactor count
-	/subst true def
-	/rot false def
-	/strlist [
-		{
-			str length 0 eq { exit } if
-
-			% 1文字ずつ処理し、スタックに結果を残す。
-			% スタックトップにtrueを置くと置換処理が行われる。
-			% falseの場合はそのまま。
-			extractchar
-			c (%) eq {
-				extractchar
-				c (\() eq {
-					% %(...%) ひとまとめにして /center 文字列 false を置く。
-					/s () def
-					{
-						extractchar
-						c (%) eq {
-							extractchar
-							c (%) eq {
-								/s s c concatstring def
-							} { c (\)) eq {
-								exit
-							} {
-								/drawline3 trap
-							} ifelse } ifelse
-						} {
-							/s s c concatstring def
-						} ifelse
-					} loop
-					/center s false
-					/cc cc 1 add def
-				} { c ({) eq {
-					% 置換無効、回転有効にして false を置く。
-					/subst false def
-					/rot true def
-					false
-				} { c (}) eq {
-					% 置換有効、回転無効に戻して false を置く。
-					/subst true def
-					/rot false def
-					false
-				} { c (%) eq {
-					% %そのもの。
-					c true
-					/cc cc 1 add def
-				} {
-					/drawline1 trap
-				} ifelse } ifelse } ifelse } ifelse
-			} {
-				% 通常の文字。
-				c true
-				/cc cc 1 add def
-			} ifelse
-
-			% この時点でスタックトップにtrueがあればsubsttableを引く。
+% - <drawline-strlist> ... bool
+%	1文字処理し、スタックに結果を残す。
+%	入力はextractcharで得る。
+%	置換テーブルの処理が必要な場合はスタックトップにtrueを置く。
+%	現在の辞書のcc（文字数）・subst（置換の有無）・rot（回転の有無）が
+%	使用される。
+/drawline-strlist {
+	extractchar
+	c (%) eq {
+		extractchar
+		c (\() eq {
+			% %(...%) ひとまとめにして /center 文字列 false を置く。
+			/s () def
 			{
-				/s exch def
-				/r rot def
-				substtable s known {
-					% 置換テーブルに要素がみつかった。
-					% 配列の場合とリテラルの場合があるが、aget・alengthで
-					% 共通に処理する。
-					/t substtable s get def
-					/i 0 def
-					{
-						i t alength ge { exit } if
-						/v t i aget def
-						/i i 1 add def
-						v type /stringtype eq {
-							% 置換先文字列
-							subst { /s v def } if
-						} { v /rot eq {
-							% 回転の指定
-							/r true def
-						} { v /hfont eq {
-							% 横書きフォントの指定
-							% 指定されたものが名前で、辞書から見つかれば
-							% そのオブジェクトを使う。そうでなければ
-							% フォントを探す。指定されたものがオブジェクトなら
-							% そのオブジェクトをそのまま使う。
-							/w t i aget def
-							/i i 1 add def
-							w type /nametype eq w type /stringtype eq or {
-								w where {
-									w get /hfont exch
-								} {
-									/hfont w findfont
-								} ifelse
-							} {
-								/hfont w
-							} ifelse
-						} {
-							/drawline4 trap
-						} ifelse } ifelse } ifelse
-					} loop
-				} if
-				% /rotは必要ならば1文字ごとに出る。
-				r { /rot } if
-				s
-			} if
-		} loop
-	] def
+				extractchar
+				c (%) eq {
+					extractchar
+					c (%) eq {
+						/s s c concatstring def
+					} { c (\)) eq {
+						exit
+					} {
+						/drawline3 trap
+					} ifelse } ifelse
+				} {
+					/s s c concatstring def
+				} ifelse
+			} loop
+			/center s false
+			/cc cc 1 add def
+		} { c ({) eq {
+			% 置換無効、回転有効にして false を置く。
+			/subst false def
+			/rot true def
+			false
+		} { c (}) eq {
+			% 置換有効、回転無効に戻して false を置く。
+			/subst true def
+			/rot false def
+			false
+		} { c (%) eq {
+			% %そのもの。
+			c true
+			/cc cc 1 add def
+		} {
+			/drawline1 trap
+		} ifelse } ifelse } ifelse } ifelse
+	} {
+		% 通常の文字。
+		c true
+		/cc cc 1 add def
+	} ifelse
+} bind def
 
+% ... bool drawline-subst
+% substtableを引いて処理を行う。
+%	rot・substが使用される。
+/drawline-subst {
+	/s exch def
+	/r rot def
+	substtable s known {
+		% 置換テーブルに要素がみつかった。
+		% 配列の場合とリテラルの場合があるが、aget・alengthで
+		% 共通に処理する。
+		/t substtable s get def
+		/i 0 def
+		{
+			i t alength ge { exit } if
+			/v t i aget def
+			/i i 1 add def
+			v type /stringtype eq {
+				% 置換先文字列
+				subst { /s v def } if
+			} { v /rot eq {
+				% 回転の指定
+				/r true def
+			} { v /hfont eq {
+				% 横書きフォントの指定
+				% 指定されたものが名前で、辞書から見つかれば
+				% そのオブジェクトを使う。そうでなければ
+				% フォントを探す。指定されたものがオブジェクトなら
+				% そのオブジェクトをそのまま使う。
+				/w t i aget def
+				/i i 1 add def
+				w type /nametype eq w type /stringtype eq or {
+					w where {
+						w get /hfont exch
+					} {
+						/hfont w findfont
+					} ifelse
+				} {
+					/hfont w
+				} ifelse
+			} {
+				/drawline4 trap
+			} ifelse } ifelse } ifelse
+		} loop
+	} if
+	% /rotは必要ならば1文字ごとに出る。
+	r { /rot } if
+	s
+} bind def
+
+% strlistarray heightstr <drawline-draw> -
+/drawline-draw {
+	1 dict begin
+	/hstr exch def
+	/strlist exch def
 	/center false def
 	/rot false def
 	/cfont /drawline-centerfont drawline-hfont defaultload def
@@ -291,6 +268,47 @@
 			/drawline2 trap
 		} ifelse } ifelse } ifelse } ifelse } ifelse
 	} forall
+	end
+} bind def
+% str height [ optdict ] <drawline> -
+% 	str:
+%		%%: %そのもの
+% 		%(): 続くnバイトを横書きする。全体で縦方向1文字送り扱い。
+% 		%!: 次の%!まで文字置換の対象としない。それぞれ縦1文字送り。
+% 		%@: 次の%@まで右90度回転して表示。
+%			元々の文字の横幅が縦方向の送り幅になる。
+%	optdict:
+%		/align ident
+%			/justify: 均等割り。長さが足りなければ文字間にスペースを入れる
+%				長さが長い場合は縮小される。
+%			/bottom: 下寄せ。
+%		/tab 辞書 (output)
+%			タブ位置を示す。
+%		/HeightString str
+%			ttfVerticalRotateShowに渡すHeightString。デフォルトは(fg)
+/drawline {
+	1 dict begin
+
+	% パラメーター取得
+	dup type /dicttype eq { /opt exch def } { /opt 0 dict def } ifelse
+	/height exch def
+	/str exch def
+	/hstr opt /HeightString (fg) defaultget def
+
+	% 文字列を分解して配列に、置換する文字列は置換。
+	/cc 0 def	% charactor count
+	/subst true def
+	/rot false def
+	/strlist [
+		{
+			str length 0 eq { exit } if
+			drawline-strlist {
+				drawline-subst
+			} if
+		} loop
+	] def
+
+	strlist hstr drawline-draw
 
 	end
 } bind def
