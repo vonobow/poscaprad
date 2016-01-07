@@ -168,9 +168,14 @@
 			% %そのもの。
 			c true
 			/cc cc 1 add def
+		} { c (>) eq {
+			% タブ位置の出力、/tabとfalseをおく。
+			/ttab false
+		} { c (<) eq {
+			/btab false
 		} {
 			/drawline1 trap
-		} ifelse } ifelse } ifelse } ifelse
+		} ifelse } ifelse } ifelse } ifelse } ifelse } ifelse
 	} {
 		% 通常の文字。
 		c true
@@ -178,7 +183,7 @@
 	} ifelse
 } bind def
 
-% ... bool drawline-subst
+% str drawline-subst
 % substtableを引いて処理を行う。
 %	rot・substが使用される。
 /drawline-subst {
@@ -227,6 +232,16 @@
 	s
 } bind def
 
+% - <drawline-settab> -
+/drawline-settab {
+	settab {
+		opt /Tab known not {
+			opt /Tab 1 dict put
+		} if
+		opt /Tab get dup length currentpoint mtx transform exch pop put
+	} if
+} bind def
+
 % strlistarray heightstr <drawline-draw> -
 /drawline-draw {
 	1 dict begin
@@ -239,6 +254,7 @@
 	/rf rfont def
 	/hf false def
 	/adj2 null def
+	/toptab false def
 	strlist {
 		/x exch def
 		hf {
@@ -250,6 +266,10 @@
 			% 文字発見。モードに従って描画し、モードを元に戻す。
 			adj2 null ne {
 				0 adj2 rmoveto
+			} if
+			toptab {
+				drawline-settab
+				/toptab false def
 			} if
 			rot {
 				rf x false << /HeightString hstr >>
@@ -270,9 +290,14 @@
 		} { x /hfont eq {
 			% 次のループで/rfにフォントが取り込まれる。
 			/hf true def
+		} { x /btab eq {
+			% タブ位置を出力する。
+			drawline-settab
+		} { x /ttab eq {
+			/toptab true def
 		} {
 			/drawline2 trap
-		} ifelse } ifelse } ifelse } ifelse } ifelse
+		} ifelse } ifelse } ifelse } ifelse } ifelse } ifelse } ifelse
 	} forall
 	end
 } bind def
@@ -313,6 +338,8 @@
 	/align opt /Align /Top defaultget def
 	/cont opt /Continue false defaultget def
 	/adj null def
+	/calconly opt /CalcOnly false defaultget def
+	/mtx matrix def
 
 	% 文字列を分解して配列に、置換する文字列は置換。
 	/cc 0 def	% charactor count
@@ -332,16 +359,19 @@
 		matrix currentmatrix
 		nulldevice
 		setmatrix
-		0 0 moveto
+		/settab calconly def
+		currentpoint /y0 exch def pop
 		strlist hstr drawline-draw
-		currentpoint /h exch def pop
+		currentpoint y0 sub /h exch def pop
 	grestore
 	opt /StringHeight h abs put
-	opt /CalcOnly false defaultget not {
+	calconly not {
+		/settab true def
 		height h abs lt {
 			% 縮小が必要な場合
 			matrix currentmatrix
-			1 height h abs div scale
+			/mtx 1 height h abs div matrix scale def
+			mtx concat
 			strlist hstr drawline-draw
 			setmatrix
 			opt /DrawingHeight height put
@@ -378,17 +408,21 @@
 	grestore
 } bind def
 
+1.5 1.5 scale
 /DFKaiSho-Md /EUC-H ttfComposeVerticalFont 18 scalefont setfont
 /drawline-hfont /DFPKaiSho-Md-EUC-H findfont 18 scalefont def
 /drawline-centerfont /Times-Roman findfont 16 scalefont def
 /drawline-hyphen-font /Courier findfont 18 scalefont def
-100 700 moveto
+100 500 moveto
 crossmark
 
-/opt << /Align /Justify /Continue true >> def
-(オーシャンビューが素敵なレジデンスAkamoz%(VIII%))(123-10号室) 200 opt drawline
+/tab 1 dict def
+/opt << /Align /Justify /Continue true /Tab tab >> def
+(オ%>ーシャンビュー%<が素敵なレジデンスAkamoz%(VIII%)123-10%>号%<室) 800 opt drawline
 crossmark
 0 opt /DrawingHeight get rmoveto crossmark
+100 tab 0 get moveto crossmark
+100 tab 1 get moveto crossmark
 110 500 moveto crossmark
 showpage
 quit
