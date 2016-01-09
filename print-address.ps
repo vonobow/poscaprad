@@ -23,9 +23,9 @@
 /address-list-filename (address.lst) setdef
 /return-address-filename (retadr.ps) setdef
 /encoding /EUC-H setdef
-/zipfont /OpticalBNormal setdef
-/adr-fontname /DFKaiSho-Md setdef
-/adr-hfontname /DFPKaiSho-Md-EUC-H setdef
+/zip-fontname /MS-Gothic-EUC-H setdef
+/adr-fontname /MS-Mincho setdef
+/adr-hfontname /MS-PMincho-EUC-H setdef
 /adr-fontsize 7 mm setdef
 /margin-right [ 15 mm 10 mm 5 mm 3 mm ] setdef
 /margin-top 25 mm setdef
@@ -37,11 +37,13 @@
 /paper-width 100 mm setdef
 /paper-height 148 mm setdef
 
+/hyphen-fontname /Courier setdef
+
 /name-top 50 mm setdef
 /name-hoffset 0 mm setdef
 /name-fontsize 10 mm setdef
-/name-fontname /DFKaiSho-SB setdef
-/name-hfontname /DFPKaiSho-SB-EUC-H setdef
+/name-fontname /MS-Gothic setdef
+/name-hfontname /MS-PGothic-EUC-H setdef
 /name-spacing 0.5 setdef
 /name-linepitch 1.2 setdef
 /name-linewidth { name-fontsize name-linepitch mul } def
@@ -51,8 +53,8 @@
 /margin-left 5 mm setdef
 /retadr-top 65 mm setdef
 /retadr-bottom 21 mm nyc-offset add setdef
-/retadr-fontname /DFKaiSho-Md setdef
-/retadr-hfontname /DFPKaiSho-Md-EUC-H setdef
+/retadr-fontname /MS-Mincho setdef
+/retadr-hfontname /MS-PMincho-EUC-H setdef
 /retadr-fontsize 4 mm setdef
 /retadr-linepitch 1.3 setdef
 /retadr-linewidth { retadr-fontsize retadr-linepitch mul } def
@@ -62,14 +64,13 @@
 
 /retname-top 80 mm setdef
 /retname-bottom 18 mm nyc-offset add setdef
-/retname-fontname /DFKaiSho-SB setdef
-/retname-hfontname /DFPKaiSho-SB-EUC-H setdef
+/retname-fontname /MS-Gothic setdef
+/retname-hfontname /MS-PGothic-EUC-H setdef
 /retname-fontsize 4.5 mm setdef
 /retname-linepitch 1.3 setdef
 /retname-linewidth { retname-fontsize retname-linepitch mul } def
 /retname-lineoff { retname-linewidth 0.5 mul } def
 
-/hyphen-fontname /Courier def
 
 /charbytesproc { charbytesEUC } setdef
 /verticalhome { paper-width paper-height moveto } bind def
@@ -101,24 +102,54 @@
 	end
 } bind def
 
+/zipw 5.7 mm def
+/ziph 8 mm def
+/retzipw 4 mm def
+/retziph 6.5 mm def
 /zip-box {
 	1 dict begin
 	/w exch def
 	currentpoint
-	5.7 mm 8 mm rrect
+	zipw ziph rrect
 	w neg dup rmoveto
-	w 2 mul 5.7 mm add
-	w 2 mul 8 mm add rrect
+	w 2 mul zipw add
+	w 2 mul ziph add rrect
 	eofill
 	moveto
 	end
 } bind def
 
-/zipframe {
-	gsave
+/ziphome {
 	verticalhome
 	-8 mm -12 mm rmoveto
 	-47.7 mm -8 mm rmoveto
+} bind def
+
+/retziphome {
+	5.5 mm new-year-card { 19 mm } { 4 mm } ifelse moveto
+} bind def
+
+% zipw ziph <zipoffset> -
+/zipoffset {
+	6 dict begin
+	/h exch def
+	/w exch def
+	gsave
+	[ (0) (1) (2) (3) (4) (5) (6) (7) (8) (9) ] {
+		0 0 moveto false charpath
+	} forall
+	flattenpath pathbbox
+	grestore
+	/y1 exch def /x1 exch def
+	/y0 exch def /x0 exch def
+	w x0 x1 add sub 0.5 mul
+	h y0 y1 add sub 0.5 mul rmoveto
+	end
+} bind def
+
+/zipframe {
+	gsave
+	ziphome
 	1 0 0 setrgbcolor
 	0.5 mm zip-box
 	7 mm 0 rmoveto 0.5 mm zip-box
@@ -128,14 +159,14 @@
 	6.8 mm 0 rmoveto 0.3 mm zip-box
 	6.8 mm 0 rmoveto 0.3 mm zip-box
 
-	5.5 mm new-year-card { 19 mm } { 4 mm } ifelse moveto
-	4 mm 6.5 mm rrect 4 mm 0 rmoveto
-	4 mm 6.5 mm rrect 4 mm 0 rmoveto
-	4 mm 6.5 mm rrect 5 mm 0 rmoveto
-	4 mm 6.5 mm rrect 4 mm 0 rmoveto
-	4 mm 6.5 mm rrect 4 mm 0 rmoveto
-	4 mm 6.5 mm rrect 4 mm 0 rmoveto
-	4 mm 6.5 mm rrect 4 mm 0 rmoveto
+	retziphome
+	retzipw retziph rrect 4 mm 0 rmoveto
+	retzipw retziph rrect 4 mm 0 rmoveto
+	retzipw retziph rrect 5 mm 0 rmoveto
+	retzipw retziph rrect 4 mm 0 rmoveto
+	retzipw retziph rrect 4 mm 0 rmoveto
+	retzipw retziph rrect 4 mm 0 rmoveto
+	retzipw retziph rrect 4 mm 0 rmoveto
 	0.3 mm setlinewidth [ 1 mm 0.5 mm ] 0 setdash
 	stroke
 
@@ -162,9 +193,15 @@
 
 % str <draw-retzip> -
 /draw-retzip {
-	zipfont findfont 4 mm scalefont setfont
-	6.25 mm 5.5 mm new-year-card { 15 mm add } if moveto
-	[ 4 mm 4 mm 5 mm 4 mm 4 mm 4 mm 4 mm ] xshow
+	1 dict begin
+	/s exch def
+	s length 7 lt { /retzip trap } if
+	s length 8 gt { /retzip trap } if
+	zip-fontname findfont 4 mm scalefont setfont
+	retziphome retzipw retziph zipoffset
+	s 0 3 getinterval [ 4 mm 4 mm 5 mm ] xshow
+	s dup length 4 sub 4 getinterval [ 4 mm 4 mm 4 mm 4 mm ] xshow
+	end
 } def
 
 % - <retadr-setfont> -
@@ -204,6 +241,8 @@ currentdict end end
 /infile address-list-filename (r) file def
 /linebuf 256 string def
 /pagecnt 1 def
+
+addressbook /default knownget not { 1 dict } if begin
 {
 	infile linebuf readline not { pop exit } if
 	1 {
@@ -218,11 +257,11 @@ currentdict end end
 
 		(page: ) print pagecnt 32 string cvs print ( ... ) print flush
 		/draw-zip-frame false defaultload { zipframe } if
-		ZIP dup 3 get 16#2d ne { trap } if
-		zipfont findfont 5.4 mm scalefont setfont
-		45.3 mm 129.7 mm moveto
+		ZIP dup length dup 7 lt { /zip trap } if 8 gt { /zip trap } if
+		zip-fontname findfont 5.4 mm scalefont setfont
+		ziphome zipw ziph zipoffset
 		dup 0 3 getinterval [ 7 mm 7 mm 7.6 mm ] xshow
-		4 4 getinterval [ 6.8 mm dup dup dup ] xshow
+		dup length 4 sub 4 getinterval [ 6.8 mm dup dup dup ] xshow
 
 		adr-fontname adr-hfontname adr-fontsize encoding drawline-setfont
 		/adr-height paper-height margin-top sub margin-bottom sub def
@@ -352,9 +391,11 @@ currentdict end end
 			name-linewidth neg 0 rmoveto
 		} forall
 
-		1 dict begin
-		(print-retadr.ps) run
-		end
+		/stackcount count def
+		1 dict begin gsave
+		return-address-filename run
+		grestore end
+		stackcount count ne { /stackcount trap } if
 
 		showpage
 		(done.\n) print flush
@@ -362,4 +403,5 @@ currentdict end end
 		end end
 	} repeat
 } loop
+end
 quit
