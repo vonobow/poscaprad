@@ -16,7 +16,7 @@
 	} ifelse
 } def
 
-/draw-zip-frame true setdef
+/draw-zip-frame false setdef
 /new-year-card true setdef
 /nyc-offset new-year-card { 10 mm } { 0 } ifelse def
 /address-book-filename (address.ps) setdef
@@ -215,6 +215,50 @@
 	retname-fontname retname-hfontname
 	retname-fontsize encoding drawline-setfont
 } def
+
+% str <draw-retadr-first> -
+% 差出人住所最初の行
+/draw-retadr-first {
+	gsave
+	retadr-lineoff paper-height retadr-top sub rmoveto
+	paper-height retadr-top sub retadr-bottom sub drawline
+	grestore
+	retadr-linewidth 0 rmoveto
+} def
+
+% str opt <draw-retadr-indent> -
+% 差出人住所2行目以降
+/draw-retadr-indent {
+	gsave
+	retadr-lineoff paper-height retadr-top sub retadr-indent sub rmoveto
+	paper-height retadr-top sub retadr-indent sub retadr-bottom sub
+	exch drawline
+	grestore
+	retadr-linewidth 0 rmoveto
+} def
+
+% str <draw-retadr-next> -
+% 差出人住所2行目以降最終行以外
+/draw-retadr-next {
+	<< /Align /Top >> draw-retadr-indent
+} def
+
+% str <draw-retadr-last> -
+% 差出人住所最終行
+/draw-retadr-last {
+	<< /Align /Bottom >> draw-retadr-indent
+} def
+
+% str <draw-retname> -
+% 差出人氏名
+/draw-retname {
+	gsave
+	retname-lineoff paper-height retname-top sub rmoveto
+	paper-height retname-top sub retname-bottom sub
+	<< /Align /Justify >> drawline
+	grestore
+	retname-linewidth 0 rmoveto
+} bind def
 
 % read address book file.
 3 dict begin
