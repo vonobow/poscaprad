@@ -1,0 +1,365 @@
+%!
+
+/NONATIVEFONTMAP true def
+[ {Catalog} << /PageLayout /SinglePage >> /PUT pdfmark
+
+(drawline.ps) runlibfile
+
+/mm [ 72 25.4 div /mul cvx ] cvx bind def
+
+% name value <setdef> -
+/setdef {
+	1 index where {
+		pop
+	} {
+		def
+	} ifelse
+} def
+
+/draw-zip-frame true setdef
+/new-year-card true setdef
+/nyc-offset new-year-card { 10 mm } { 0 } ifelse def
+/address-book-filename (address.ps) setdef
+/address-list-filename (address.lst) setdef
+/return-address-filename (retadr.ps) setdef
+/encoding /EUC-H setdef
+/zipfont /OpticalBNormal setdef
+/adr-fontname /DFKaiSho-Md setdef
+/adr-hfontname /DFPKaiSho-Md-EUC-H setdef
+/adr-fontsize 7 mm setdef
+/margin-right [ 15 mm 10 mm 5 mm 3 mm ] setdef
+/margin-top 25 mm setdef
+/margin-bottom { 20 mm nyc-offset add } setdef
+/adr-linepitch 1.5 setdef
+/adr-linewidth { adr-fontsize adr-linepitch mul } def
+/adr-lineshift { adr-fontsize 0.5 mul } def
+/adr-indent 10 mm setdef
+/paper-width 100 mm setdef
+/paper-height 148 mm setdef
+
+/name-top 50 mm setdef
+/name-hoffset 0 mm setdef
+/name-fontsize 10 mm setdef
+/name-fontname /DFKaiSho-SB setdef
+/name-hfontname /DFPKaiSho-SB-EUC-H setdef
+/name-spacing 0.5 setdef
+/name-linepitch 1.2 setdef
+/name-linewidth { name-fontsize name-linepitch mul } def
+/name-lineoff { name-linewidth 0.5 mul } def
+/title-aft-default (様) setdef
+
+/margin-left 5 mm setdef
+/retadr-top 65 mm setdef
+/retadr-bottom 21 mm nyc-offset add setdef
+/retadr-fontname /DFKaiSho-Md setdef
+/retadr-hfontname /DFPKaiSho-Md-EUC-H setdef
+/retadr-fontsize 4 mm setdef
+/retadr-linepitch 1.3 setdef
+/retadr-linewidth { retadr-fontsize retadr-linepitch mul } def
+/retadr-lineoff { retadr-linewidth 0.5 mul } def
+/retadr-indent 6 mm def
+/retadr-linegap  2 mm setdef
+
+/retname-top 80 mm setdef
+/retname-bottom 18 mm nyc-offset add setdef
+/retname-fontname /DFKaiSho-SB setdef
+/retname-hfontname /DFPKaiSho-SB-EUC-H setdef
+/retname-fontsize 4.5 mm setdef
+/retname-linepitch 1.3 setdef
+/retname-linewidth { retname-fontsize retname-linepitch mul } def
+/retname-lineoff { retname-linewidth 0.5 mul } def
+
+/hyphen-fontname /Courier def
+
+/charbytesproc { charbytesEUC } setdef
+/verticalhome { paper-width paper-height moveto } bind def
+/verticalcenter { paper-width 0.5 mul paper-height moveto } bind def
+
+<< /PageSize [ paper-width paper-height ] >> setpagedevice
+
+/DebugDump true def
+/dump {
+	/DebugDump false defaultload {
+		(----- ) print print ( -----\n) print
+		pstack
+		(--------------------\n) print
+	} {
+		pop
+	} ifelse
+} bind def
+
+/rrect {
+	2 dict begin
+	/dy exch def
+	/dx exch def
+	currentpoint
+	dx 0 rlineto
+	0 dy rlineto
+	dx neg 0 rlineto
+	closepath
+	moveto
+	end
+} bind def
+
+/zip-box {
+	1 dict begin
+	/w exch def
+	currentpoint
+	5.7 mm 8 mm rrect
+	w neg dup rmoveto
+	w 2 mul 5.7 mm add
+	w 2 mul 8 mm add rrect
+	eofill
+	moveto
+	end
+} bind def
+
+/zipframe {
+	gsave
+	verticalhome
+	-8 mm -12 mm rmoveto
+	-47.7 mm -8 mm rmoveto
+	1 0 0 setrgbcolor
+	0.5 mm zip-box
+	7 mm 0 rmoveto 0.5 mm zip-box
+	7 mm 0 rmoveto 0.5 mm zip-box
+	7.6 mm 0 rmoveto 0.3 mm zip-box
+	6.8 mm 0 rmoveto 0.3 mm zip-box
+	6.8 mm 0 rmoveto 0.3 mm zip-box
+	6.8 mm 0 rmoveto 0.3 mm zip-box
+
+	5.5 mm new-year-card { 19 mm } { 4 mm } ifelse moveto
+	4 mm 6.5 mm rrect 4 mm 0 rmoveto
+	4 mm 6.5 mm rrect 4 mm 0 rmoveto
+	4 mm 6.5 mm rrect 5 mm 0 rmoveto
+	4 mm 6.5 mm rrect 4 mm 0 rmoveto
+	4 mm 6.5 mm rrect 4 mm 0 rmoveto
+	4 mm 6.5 mm rrect 4 mm 0 rmoveto
+	4 mm 6.5 mm rrect 4 mm 0 rmoveto
+	0.3 mm setlinewidth [ 1 mm 0.5 mm ] 0 setdash
+	stroke
+
+	new-year-card {
+		0 mm 88 mm moveto 30 mm 60 mm rrect
+		0 mm 0 mm moveto 100 mm 25 mm rrect stroke
+	} if
+
+	grestore
+} bind def
+
+% vfontname hfontname size cmapname <drawline-setfont> -
+/drawline-setfont {
+	2 dict begin
+	/cm exch def
+	/sz exch def
+	findfont sz scalefont
+	exch cm ttfComposeVerticalFont sz scalefont setfont
+	hyphen-fontname findfont sz scalefont
+	end
+	/drawline-hyphen-font exch def
+	/drawline-hfont exch def
+} bind def
+
+% str <draw-retzip> -
+/draw-retzip {
+	zipfont findfont 4 mm scalefont setfont
+	6.25 mm 5.5 mm new-year-card { 15 mm add } if moveto
+	[ 4 mm 4 mm 5 mm 4 mm 4 mm 4 mm 4 mm ] xshow
+} def
+
+% - <retadr-setfont> -
+/retadr-setfont {
+	retadr-fontname retadr-hfontname
+	retadr-fontsize encoding drawline-setfont
+} def
+
+% - <retname-setfont> -
+/retname-setfont {
+	retname-fontname retname-hfontname
+	retname-fontsize encoding drawline-setfont
+} def
+
+% read address book file.
+3 dict begin
+count /StackCount exch def
+
+/----- {
+	>>
+	dup /ID knownget {
+		exch def
+	} {
+		pop
+	} ifelse
+	<<
+} def
+
+200 dict begin
+<< address-book-filename run
+count StackCount sub { pop } repeat
+currentdict end end
+/addressbook exch def
+
+% addressbook { exch dup length string cvs print (: ) print == } forall
+
+/infile address-list-filename (r) file def
+/linebuf 256 string def
+/pagecnt 1 def
+{
+	infile linebuf readline not { pop exit } if
+	1 {
+		dup length 2 lt { pop exit } if
+		dup 0 get 16#2f ne { pop exit } if
+		token not { exit } if
+		exch pop dup type /nametype ne { pop exit } if
+		addressbook exch get
+
+		begin
+		20 dict begin
+
+		(page: ) print pagecnt 32 string cvs print ( ... ) print flush
+		/draw-zip-frame false defaultload { zipframe } if
+		ZIP dup 3 get 16#2d ne { trap } if
+		zipfont findfont 5.4 mm scalefont setfont
+		45.3 mm 129.7 mm moveto
+		dup 0 3 getinterval [ 7 mm 7 mm 7.6 mm ] xshow
+		4 4 getinterval [ 6.8 mm dup dup dup ] xshow
+
+		adr-fontname adr-hfontname adr-fontsize encoding drawline-setfont
+		/adr-height paper-height margin-top sub margin-bottom sub def
+		verticalhome
+		margin-right alength ADRS alength lt {
+			margin-right alength 1 sub aget
+		} {
+			margin-right ADRS alength 1 sub aget
+		} ifelse
+		adr-lineshift add neg margin-top neg rmoveto
+
+		gsave
+			ADRS 0 aget adr-height drawline
+		grestore
+		ADRS alength 1 gt {
+			adr-linewidth neg adr-indent neg rmoveto
+			/adr-height adr-height adr-indent sub def
+			ADRS 1 ADRS length 2 sub getinterval {
+				gsave adr-height drawline grestore
+				adr-linewidth neg 0 rmoveto
+			} forall
+			ADRS dup length 1 sub get
+			adr-height << /Align /Bottom >> drawline
+		} if
+
+		% ashowによる追加のスペースは、name-spacingの直後には付かない。
+		/family-name C def
+
+		% 連名処理: 辞書中に/FL（ファミリーリスト）がある場合
+		% /FLは配列で、要素は文字列かID。
+		% 文字列だった場合はそれをそのまま名前として表示する。
+		% IDだった場合はIDを検索して/Dを名前として表示する。
+		% /FLがなければ元辞書中の/Dがそのまま名前となる。
+		% 長さの計算は一番長い名前の人に合わせる。
+		% 一文字の人は上揃えされるので、
+		% 中揃えしたければスペースを前後に入れて3文字に、
+		% 下揃えしたければスペースを前に入れて2文字にする。
+		% 同時に敬称も読み出しておく。
+		/FL where {
+			pop [ FL {
+				3 dict begin
+				dup type /nametype eq {
+					% id
+					addressbook exch get
+					dup /D get /gn exch def
+					/title-aft title-aft-default defaultget /ta exch def
+				} {
+					% may be a string
+					/gn exch def
+					/ta title-aft-default def
+				} ifelse
+				currentdict end
+			} forall ]
+		} {
+			[ <<
+				/gn D
+				/ta /title-aft title-aft-default defaultload
+			>> ]
+		} ifelse
+		/namelist exch def
+		% namelistは
+		% << /gn (名前) /ta (敬称) >>
+		% の配列。
+
+		% 文字列長さを計算し、一番長いものを探す。
+		name-fontname name-hfontname name-fontsize encoding drawline-setfont
+		paper-height name-top sub margin-bottom sub
+		/namearea exch def	% 名前領域高さ
+		/opt << /CalcOnly true >> def
+		null 0 namelist {
+			begin
+			gn namearea opt drawline	% 高さは仮
+			/gh opt /StringHeight get def
+			ta namearea opt drawline	% 同
+			/th opt /StringHeight get def
+			gh th add
+			2 copy lt { currentdict exch 4 2 roll pop pop } { pop } ifelse
+			end
+		} forall
+		/gth exch def
+		/tallest exch def
+
+		% 姓の長さを求める
+		family-name namearea opt drawline	% 高さは仮
+		/fh opt /StringHeight get def
+
+		/sp name-spacing name-fontsize mul def	% 姓名間空白長
+		/namelen fh sp add gth add def	% 文字列描画長
+
+		% 姓の高さfh、空白sp、名＋継承高さgthの再計算
+		namelen namearea lt {
+			% スキマができる。nameareaからspとthを引いた残りを分配
+			tallest begin
+			namearea sp sub th sub fh mul fh gh add div
+			end
+			/fh exch def
+		} {
+			% スキマができない。nameareaを比例配分
+			namearea namelen div dup fh mul /fh exch def
+			sp mul /sp exch def
+		} ifelse
+		/gth namearea fh sub sp sub def
+
+		% 2行以上ある場合は名前全体の中央が紙面中央に来るようにする。
+		verticalcenter
+		namelist length 1 sub name-lineoff mul 0 rmoveto
+		name-hoffset neg name-top neg rmoveto
+
+		% 姓を書く
+		family-name fh << /Align /Justify /Continue true >> drawline
+		0 sp neg rmoveto
+
+		% 名を書く
+		namelist {
+			begin
+			gsave
+			gh th add gth lt {
+				% 収まる
+				gn gth th sub << /Align /Justify /Continue true >> drawline
+				ta th drawline
+			} {
+				% 収まらない
+				gn ta strcat gth drawline
+			} ifelse
+			grestore
+			end
+			name-linewidth neg 0 rmoveto
+		} forall
+
+		1 dict begin
+		(print-retadr.ps) run
+		end
+
+		showpage
+		(done.\n) print flush
+		/pagecnt pagecnt 1 add store
+		end end
+	} repeat
+} loop
+quit

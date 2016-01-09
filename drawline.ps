@@ -1,21 +1,6 @@
 %!
 (ttf-vert.ps) runlibfile
 
-% <key> <default> defaultload <value>
-/defaultload {
-	exch dup where {
-		exch get exch pop
-	} {
-		pop
-	} ifelse
-} bind def
-
-% <dict> <key> knownget ( <val> true ) | false
-% knownget has same functionality as .knownget in GS.
-/knownget {
-	2 copy known { get true } { pop pop false } ifelse
-} bind def
-
 % <dict> <key> <default> defaultget <value>
 /defaultget {
 	3 1 roll knownget {
@@ -50,6 +35,16 @@
 	1 dict begin
 	/v exch def
 	{ v } forall
+	end
+} bind def
+
+% str num <splitstring> str1 str2
+/splitstring {
+	2 dict begin
+	/n exch def
+	/s exch def
+	s 0 n getinterval
+	s n s length n sub getinterval
 	end
 } bind def
 
@@ -95,29 +90,7 @@
 	(-) [ /rot /hfont /drawline-hyphen-font ]
 >> def
 
-% /rot: drawline-rotfont、なければdrawline-hfont
-% /center: drawline-centerfont、なければdrawline-hfont
-
-% str num <splitstring> str1 str2
-/splitstring {
-	2 dict begin
-	/n exch def
-	/s exch def
-	s 0 n getinterval
-	s n s length n sub getinterval
-	end
-} bind def
-
-% str1 str2 <concatstring> str
-/concatstring {
-	2 dict begin
-	/t exch def
-	/s exch def
-	s length t length add string
-	dup 0 s putinterval
-	dup s length t putinterval
-	end
-} bind def
+5 dict begin
 
 % - <extractchar> -
 /extractchar {
@@ -142,14 +115,14 @@
 				c (%) eq {
 					extractchar
 					c (%) eq {
-						/s s c concatstring def
+						/s s c strcat def
 					} { c (\)) eq {
 						exit
 					} {
 						/drawline3 trap
 					} ifelse } ifelse
 				} {
-					/s s c concatstring def
+					/s s c strcat def
 				} ifelse
 			} loop
 			/center s false
@@ -242,6 +215,9 @@
 	} if
 } bind def
 
+% /rot: drawline-rotfont、なければdrawline-hfont
+% /center: drawline-centerfont、なければdrawline-hfont
+
 % strlistarray heightstr <drawline-draw> -
 /drawline-draw {
 	1 dict begin
@@ -302,6 +278,9 @@
 	end
 } bind def
 
+currentdict end
+/drawline-subr exch def
+
 % str height [ optdict ] <drawline> -
 % 	str:
 %		%%: %そのもの
@@ -328,6 +307,7 @@
 %		/DrawingHeight (出力)
 %			実際の描画高さ。/CalcOnlyがtrueの場合は設定されない。
 /drawline {
+	//drawline-subr begin
 	1 dict begin
 
 	% パラメーター取得
@@ -393,7 +373,7 @@
 		} ifelse } ifelse } ifelse } ifelse
 	} if
 
-	end
+	end end
 } bind def
 
 /charbytesproc { charbytesEUC } def
@@ -408,21 +388,23 @@
 	grestore
 } bind def
 
-1.5 1.5 scale
-/DFKaiSho-Md /EUC-H ttfComposeVerticalFont 18 scalefont setfont
-/drawline-hfont /DFPKaiSho-Md-EUC-H findfont 18 scalefont def
-/drawline-centerfont /Times-Roman findfont 16 scalefont def
-/drawline-hyphen-font /Courier findfont 18 scalefont def
-100 500 moveto
-crossmark
+{
+	1.5 1.5 scale
+	/DFKaiSho-Md /EUC-H ttfComposeVerticalFont 18 scalefont setfont
+	/drawline-hfont /DFPKaiSho-Md-EUC-H findfont 18 scalefont def
+	/drawline-centerfont /Times-Roman findfont 16 scalefont def
+	/drawline-hyphen-font /Courier findfont 18 scalefont def
+	100 500 moveto
+	crossmark
 
-/tab 1 dict def
-/opt << /Align /Justify /Continue true /Tab tab >> def
-(オ%>ーシャンビュー%<が素敵なレジデンスAkamoz%(VIII%)123-10%>号%<室) 800 opt drawline
-crossmark
-0 opt /DrawingHeight get rmoveto crossmark
-100 tab 0 get moveto crossmark
-100 tab 1 get moveto crossmark
-110 500 moveto crossmark
-showpage
-quit
+	/tab 1 dict def
+	/opt << /Align /Justify /Continue true /Tab tab >> def
+	(オ%>ーシャンビュー%<が素敵なレジデンスAkamoz%(VIII%)123-10%>号%<室) 800 opt drawline
+	crossmark
+	0 opt /DrawingHeight get rmoveto crossmark
+	100 tab 0 get moveto crossmark
+	100 tab 1 get moveto crossmark
+	110 500 moveto crossmark
+	showpage
+	quit
+} pop
