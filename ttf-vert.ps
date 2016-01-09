@@ -591,10 +591,11 @@
 
 % file <ttfLoadVerticalSubst> dict
 /ttfLoadVerticalSubst {
-	6 dict begin
+	7 dict begin
 	/f exch def
 	/b4 4 string def
 	/b2 2 string def
+	/tag 4 string def
 
 	f b4 readstring not { /ttf4r trap } if
 	<00010000> ne { /ttf4-not-ttf trap } if
@@ -630,34 +631,36 @@
 	gsubtable end
 } bind def
 
-% file subfontnum <ttfLoadVerticalSubstTTC> dict
+% file subfontnum <ttfLoadVerticalSubstTTC> dict true | false
 /ttfLoadVerticalSubstTTC {
-	8 dict begin
+	7 dict begin
 	/sf exch def
 	/f exch def
 	/b4 4 string def
 	/b2 2 string def
-	/tag 4 string def
 
-	f b4 readstring not { /ttf0r trap } if
-	(ttcf) ne { /ttfc trap } if
-	f b4 readstring not { /ttf1r trap } if
-	<00010000> lt { /ttf1v trap } if
-	{ b4 (version: %8S\n) dprintf } ttfDebug
-	f b4 readstring not { /ttf2r trap } if
-	str2num dup 0 le { /ttf2n trap } if
-	/numsubfont exch def
-	{ numsubfont (number of fonts: %d\n) dprintf } ttfDebug
-	sf numsubfont ge { /ttf-subfont trap } if
-	null 0 1 sf {
-		{ dup (font #%d: ) dprintf } ttfDebug pop
-		f b4 readstring not { /ttf3r trap } if
-		str2num dup 0 le { /ttf3n trap } if
-		{ dup dup (offset table starts from: %d (0x%x)\n) dprintf } ttfDebug
-		exch pop
-	} for
-	f exch setfileposition
-	f ttfLoadVerticalSubst
+	1 {
+		f b4 readstring not { /ttf0r trap } if
+		(ttcf) ne { false exit } if
+		f b4 readstring not { /ttf1r trap } if
+		<00010000> lt { /ttf1v trap } if
+		{ b4 (version: %8S\n) dprintf } ttfDebug
+		f b4 readstring not { /ttf2r trap } if
+		str2num dup 0 le { /ttf2n trap } if
+		/numsubfont exch def
+		{ numsubfont (number of fonts: %d\n) dprintf } ttfDebug
+		sf numsubfont ge { /ttf-subfont trap } if
+		null 0 1 sf {
+			{ dup (font #%d: ) dprintf } ttfDebug pop
+			f b4 readstring not { /ttf3r trap } if
+			str2num dup 0 le { /ttf3n trap } if
+			{ dup dup (offset table starts from: %d (0x%x)\n) dprintf }
+			ttfDebug exch pop
+		} for
+		f exch setfileposition
+		f ttfLoadVerticalSubst
+		true
+	} repeat
 	end
 } bind def
 
@@ -716,7 +719,12 @@ currentdict end
 	/CIDMap get copyCIDMap
 	CIDFontType 2 eq { /FontType 42 def } if
 
-	Path (r) file SubfontID ttfLoadVerticalSubstTTC
+	currentdict /SubfontID known {
+		Path (r) file SubfontID ttfLoadVerticalSubstTTC
+	} { false } ifelse
+	not {
+		Path (r) file ttfLoadVerticalSubst
+	} if
 	[ 0 0 ] CIDMap {
 		% dict [ cid pos ] str
 		1 index 1 0 put
