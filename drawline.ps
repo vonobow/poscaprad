@@ -470,19 +470,19 @@ currentdict end
 	} repeat end end
 } bind def
 
-/charbytesproc { charbytesEUC } def
-
-/crossmark {
-	gsave
-	0 setlinewidth
-	18 18 scale
-	-0.5 0 rmoveto 1 0 rlineto
-	-0.5 -0.5 rmoveto 0 1 rlineto
-	stroke
-	grestore
-} bind def
-
 {
+	/charbytesproc { charbytesEUC } def
+
+	/crossmark {
+		gsave
+		0 setlinewidth
+		18 18 scale
+		-0.5 0 rmoveto 1 0 rlineto
+		-0.5 -0.5 rmoveto 0 1 rlineto
+		stroke
+		grestore
+	} bind def
+
 	1.5 1.5 scale
 	/DFKaiSho-Md /EUC-H ttfComposeVerticalFont 18 scalefont setfont
 	/drawline-hfont /DFPKaiSho-Md-EUC-H findfont 18 scalefont def
