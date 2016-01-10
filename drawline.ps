@@ -137,18 +137,20 @@
 			/subst true def
 			/rot false def
 			false
-		} { c (%) eq {
-			% %そのもの。
+		} { c (%) eq {	% %そのもの。
 			c true
 			/cc cc 1 add def
-		} { c (>) eq {
-			% タブ位置の出力、/tabとfalseをおく。
+		} { c (>) eq {	% 上タブ位置出力
 			/ttab false
-		} { c (<) eq {
+		} { c (<) eq {	% 下タブ位置出力
 			/btab false
+		} { c ([) eq {	% 出力禁止
+			/dis false
+		} { c (]) eq {	% 出力再開
+			/ena false
 		} {
 			/drawline1 trap
-		} ifelse } ifelse } ifelse } ifelse } ifelse } ifelse
+		} ifelse } ifelse } ifelse } ifelse } ifelse } ifelse } ifelse } ifelse
 	} {
 		% 通常の文字。
 		c true
@@ -231,14 +233,17 @@
 	/hf false def
 	/adj2 null def
 	/toptab false def
+	/moveonly false def
 	strlist {
 		/x exch def
-		hf {
+		1 { hf {
 			% 直前が/hfontだった場合の処理。
 			% フォントはすでにオブジェクトに展開されている。
 			/rf x def
 			/hf false def
-		} { x type /stringtype eq {
+			exit
+		} if
+		x type /stringtype eq {
 			% 文字発見。モードに従って描画し、モードを元に戻す。
 			adj2 null ne {
 				0 adj2 rmoveto
@@ -246,6 +251,9 @@
 			toptab {
 				drawline-settab
 				/toptab false def
+			} if
+			moveonly {
+				gsave matrix currentmatrix nulldevice setmatrix
 			} if
 			rot {
 				rf x false << /HeightString hstr >>
@@ -255,25 +263,47 @@
 			} {
 				x show
 			} ifelse } ifelse
+			moveonly {
+				currentpoint grestore moveto
+			} if
 			/center false def
 			/rot false def
 			/rf rfont def
 			/adj2 adj def
-		} { x /center eq {
+			exit
+		} if
+		x /center eq {
 			/center true def
-		} { x /rot eq {
+			exit
+		} if
+		x /rot eq {
 			/rot true def
-		} { x /hfont eq {
+			exit
+		} if
+		x /hfont eq {
 			% 次のループで/rfにフォントが取り込まれる。
 			/hf true def
-		} { x /btab eq {
+			exit
+		} if
+		x /btab eq {
 			% タブ位置を出力する。
 			drawline-settab
-		} { x /ttab eq {
+			exit
+		} if
+		x /ttab eq {
 			/toptab true def
-		} {
+			exit
+		} if
+		x /ena eq {
+			/moveonly false def
+			exit
+		} if
+		x /dis eq {
+			/moveonly true def
+			exit
+		} if
 			/drawline2 trap
-		} ifelse } ifelse } ifelse } ifelse } ifelse } ifelse } ifelse
+		} repeat
 	} forall
 	end
 } bind def
@@ -394,17 +424,22 @@ currentdict end
 	/drawline-hfont /DFPKaiSho-Md-EUC-H findfont 18 scalefont def
 	/drawline-centerfont /Times-Roman findfont 16 scalefont def
 	/drawline-hyphen-font /Courier findfont 18 scalefont def
-	100 500 moveto
+	100 500 moveto currentpoint
 	crossmark
 
 	/tab 1 dict def
 	/opt << /Align /Justify /Continue true /Tab tab >> def
-	(オ%>ーシャンビュー%<が素敵なレジデンスAkamoz%(VIII%)123-10%>号%<室) 800 opt drawline
+	/h 450 def
+	(オ%>ーシャンビュー%<が素敵なレジデンスAkamoz%(VIII%)123-10%>号%<室) h opt drawline
 	crossmark
 	0 opt /DrawingHeight get rmoveto crossmark
 	100 tab 0 get moveto crossmark
 	100 tab 1 get moveto crossmark
 	110 500 moveto crossmark
+
+	moveto 10 0 rmoveto
+	(オ%[ーシャンビューが素敵なレジデンスAkamoz%(VIII%)123-10号%]室) h opt drawline
+
 	showpage
 	quit
-} pop
+} exec
