@@ -42,13 +42,6 @@
 } def
 
 /encoding /EUC setdef
-encoding /EUC eq {
-} { encoding /UTF8 eq {
-	(utf8-settings.ps) runlibfile
-} {
-	/encoding trap
-} ifelse }ifelse
-
 /draw-zip-frame false setdef
 /new-year-card true setdef
 /nyc-offset new-year-card { 10 mm } { 0 } ifelse def
@@ -63,10 +56,7 @@ encoding /EUC eq {
 /margin-top 25 mm setdef
 /margin-bottom { 18 mm nyc-offset add } setdef
 
-/zip-fontname /MS-Gothic-EUC-H setdef
-
 /adr-fontname /MS-Mincho setdef
-/adr-hfontname /MS-PMincho-EUC-H setdef
 /adr-fontsize 7 mm setdef
 /adr-linepitch 1.5 setdef
 /adr-indent 10 mm setdef
@@ -87,7 +77,6 @@ encoding /EUC eq {
 /name-hoffset 0 mm setdef
 /name-fontsize 10 mm setdef
 /name-fontname /MS-Gothic setdef
-/name-hfontname /MS-PGothic-EUC-H setdef
 /name-spacing 0.5 setdef
 /name-linepitch 1.2 setdef
 /name-top-ypos { paper-height margin-top sub name-top sub } def
@@ -96,13 +85,10 @@ encoding /EUC eq {
 /name-linewidth { name-fontsize name-linepitch mul } def
 /name-lineoff { name-linewidth 0.5 mul } def
 
-/title-aft-default (ออ) setdef
-
 /retadr-margin-top 65 mm setdef
 /retadr-bottom 3 mm setdef
 /retadr-top 0 mm setdef
 /retadr-fontname /MS-Mincho setdef
-/retadr-hfontname /MS-PMincho-EUC-H setdef
 /retadr-fontsize 4 mm setdef
 /retadr-linepitch 1.3 setdef
 /retadr-indent 6 mm def
@@ -118,7 +104,6 @@ encoding /EUC eq {
 /retname-top 15 mm setdef
 /retname-bottom 0 mm setdef
 /retname-fontname /MS-Gothic setdef
-/retname-hfontname /MS-PGothic-EUC-H setdef
 /retname-fontsize 4.5 mm setdef
 /retname-linepitch 1.3 setdef
 /retname-top-ypos { paper-height retadr-margin-top sub retname-top sub } def
@@ -128,8 +113,6 @@ encoding /EUC eq {
 /retname-linewidth { retname-fontsize retname-linepitch mul } def
 /retname-lineoff { retname-linewidth 0.5 mul } def
 
-/charbytesproc { charbytesEUC } setdef
-/CMapName /EUC-H setdef
 /verticalhome { paper-width paper-height moveto } bind def
 
 << /PageSize [ paper-width paper-height ] >> setpagedevice
@@ -388,6 +371,15 @@ currentdict end end
 % addressbook { exch dup length string cvs print (: ) print == } forall
 
 addressbook /default knownget not { 1 dict } if begin
+encoding /EUC eq {
+	(euc-settings.ps) runlibfile
+} { encoding /UTF8 eq {
+	(utf8-settings.ps) runlibfile
+} {
+	/encoding trap
+} ifelse }ifelse
+/substtable drawline-substtable def
+
 /infile address-list-filename (r) file def
 /linebuf 256 string def
 /pagecnt 1 def
