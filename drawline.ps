@@ -87,7 +87,7 @@
 	(0) (〇)
 	[ (A) (Z) expandstrrange ] /rot expandarrayval
 	[ (a) (z) expandstrrange ] /rot expandarrayval
-	(-) [ /rot /hfont /drawline-hyphen-font ]
+	(-) [ /rot /hfont /drawline-hyphen-font /hstr true ]
 >> def
 
 5 dict begin
@@ -197,9 +197,13 @@
 				} {
 					/hfont w
 				} ifelse
+			} { v /hstr eq {
+				% HeightStringの指定
+				/hstr t i aget
+				/i i 1 add def
 			} {
 				/drawline4 trap
-			} ifelse } ifelse } ifelse
+			} ifelse } ifelse } ifelse } ifelse
 		} loop
 	} if
 	% /rotは必要ならば1文字ごとに出る。
@@ -234,6 +238,8 @@
 	/adj2 null def
 	/toptab false def
 	/moveonly false def
+	/hs false def
+	/heightstring null def
 	strlist {
 		/x exch def
 		1 { hf {
@@ -241,6 +247,12 @@
 			% フォントはすでにオブジェクトに展開されている。
 			/rf x def
 			/hf false def
+			exit
+		} if
+		hs {
+			% 直前が/hstrだった場合の処理。
+			/heightstring x def
+			/hs false def
 			exit
 		} if
 		x type /stringtype eq {
@@ -256,7 +268,25 @@
 				gsave matrix currentmatrix nulldevice setmatrix
 			} if
 			rot {
-				rf x false << /HeightString hstr >>
+				rf x false
+				% HeightStringは、
+				% /hstrがないか、/hstr nullならばパラメーターで指定されたhstr
+				% /hstr falseならば指定なし
+				% /hstr trueならば描画する文字自身
+				% /hstr 文字列ならば指定された文字列
+				<<
+				heightstring type /booleantype eq {
+					heightstring {
+						/HeightString x
+					} if
+				} { heightstring type /nulltype eq {
+					/HeightString hstr
+				} { heightstring type /stringtype eq {
+					/HeightString heightstring
+				} {
+					/hstr trap
+				} ifelse } ifelse } ifelse
+				>>
 				ttfVerticalRotateShow
 			} { center {
 				cfont x ttfVerticalCenterShow
@@ -270,6 +300,7 @@
 			/rot false def
 			/rf rfont def
 			/adj2 adj def
+			/heightstring null def
 			exit
 		} if
 		x /center eq {
@@ -300,6 +331,11 @@
 		} if
 		x /dis eq {
 			/moveonly true def
+			exit
+		} if
+		x /hstr eq {
+			% 次のループでheightstringにデータが取り込まれる
+			/hs true def
 			exit
 		} if
 			/drawline2 trap
