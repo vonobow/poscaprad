@@ -338,12 +338,14 @@ currentdict end
 %			実際の描画高さ。/CalcOnlyがtrueの場合は設定されない。
 /drawline {
 	//drawline-subr begin
-	1 dict begin
+	1 dict begin 1 {
 
 	% パラメーター取得
 	dup type /dicttype eq { /opt exch def } { /opt 0 dict def } ifelse
 	/height exch def
 	/str exch def
+	str length 0 eq { exit } if
+
 	/hstr opt /HeightString (fg) defaultget def
 	/align opt /Align /Top defaultget def
 	/cont opt /Continue false defaultget def
@@ -403,7 +405,7 @@ currentdict end
 		} ifelse } ifelse } ifelse } ifelse
 	} if
 
-	end end
+	} repeat end end
 } bind def
 
 /charbytesproc { charbytesEUC } def
@@ -442,4 +444,4 @@ currentdict end
 
 	showpage
 	quit
-} exec
+} pop
