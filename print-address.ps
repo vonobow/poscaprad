@@ -64,10 +64,12 @@
 
 /retname-top 80 mm setdef
 /retname-bottom 18 mm nyc-offset add setdef
+/retname-height { paper-height retname-top sub retname-bottom sub } def
 /retname-fontname /MS-Gothic setdef
 /retname-hfontname /MS-PGothic-EUC-H setdef
 /retname-fontsize 4.5 mm setdef
 /retname-linepitch 1.3 setdef
+/retname-spacing { name-spacing } setdef
 /retname-linewidth { retname-fontsize retname-linepitch mul } def
 /retname-lineoff { retname-linewidth 0.5 mul } def
 
@@ -260,6 +262,55 @@
 	retname-linewidth 0 rmoveto
 } bind def
 
+% str str <draw-retlist-setup> -
+% 差出人連名処理の設定。姓と名を別々に指定する。
+% draw-retlist-infoという辞書に必要な情報が出力される。
+/draw-retlist-setup {
+	10 dict begin
+	/gn exch def
+	/fn exch def
+	/h retname-height def
+	gsave matrix currentmatrix nulldevice setmatrix
+	0 0 moveto fn h drawline currentpoint /fh exch def pop
+	0 0 moveto gn h drawline currentpoint /gh exch def pop
+	/spc retname-fontsize name-spacing mul def
+	/totalheight fh spc add gh add def
+	totalheight h lt {
+		/fh h spc sub fh mul fh gh add div def
+		/gh h fh sub spc sub def
+	} {
+		h totalheight div
+		dup fh mul /fh exch def
+		gh mul /gh exch def
+	} ifelse
+	/y1 paper-height retname-top sub def
+	/y2 retname-bottom gh add def
+	grestore
+	currentdict
+	end
+	/draw-retlist-info exch def
+} bind def
+
+% str str <draw-retlist> -
+% 差出人連名描画。姓と名を別々に指定する。
+% 姓を書きたくない人は姓を空文字列にする。
+% draw-retlist-info辞書が使用される。
+/draw-retlist {
+	draw-retlist-info begin
+	1 dict begin
+	gsave
+	retname-lineoff y2 rmoveto
+	gh << /Align /Justify >> drawline
+	grestore
+	gsave
+	retname-lineoff y1 rmoveto
+	fh << /Align /Justify /Continue true >> drawline
+	grestore
+	retname-linewidth 0 rmoveto
+	end
+	end
+} bind def
+
 % read address book file.
 3 dict begin
 count /StackCount exch def
@@ -395,7 +446,7 @@ addressbook /default knownget not { 1 dict } if begin
 		/sp name-spacing name-fontsize mul def	% 姓名間空白長
 		/namelen fh sp add gth add def	% 文字列描画長
 
-		% 姓の高さfh、空白sp、名＋継承高さgthの再計算
+		% 姓の高さfh、空白sp、名＋敬称高さgthの再計算
 		namelen namearea lt {
 			% スキマができる。nameareaからspとthを引いた残りを分配
 			tallest begin
