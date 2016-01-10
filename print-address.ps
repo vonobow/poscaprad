@@ -64,7 +64,6 @@
 /adr-top 0 mm setdef
 /adr-bottom 7 mm setdef
 /adr-linewidth { adr-fontsize adr-linepitch mul } def
-/adr-lineshift { adr-fontsize 0.5 mul } def
 /adr-lineoff { adr-linewidth 0.5 mul } def
 /adr-top-ypos { paper-height margin-top sub adr-top sub } def
 /adr-indent-ypos { adr-top-ypos adr-indent sub } def
@@ -407,14 +406,14 @@ addressbook /default knownget not { 1 dict } if begin
 		adr-fontname adr-hfontname adr-fontsize encoding drawline-setfont
 		paper-width 0 moveto
 		margin-right alength ADRS alength lt {
-			margin-right alength 1 sub aget
+			margin-right dup alength 1 sub aget
 		} {
 			margin-right ADRS alength 1 sub aget
 		} ifelse
 		neg 0 rmoveto
 
 		gsave
-		adr-lineshift neg adr-top-ypos rmoveto
+		adr-lineoff neg adr-top-ypos rmoveto
 		ADRS 0 aget adr-height drawline
 		grestore
 		adr-linewidth neg 0 rmoveto
