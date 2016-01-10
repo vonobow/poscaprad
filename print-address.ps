@@ -35,11 +35,19 @@
 % name value <setdef> -
 /setdef {
 	1 index where {
-		pop
+		pop pop pop
 	} {
 		def
 	} ifelse
 } def
+
+/encoding /EUC setdef
+encoding /EUC eq {
+} { encoding /UTF8 eq {
+	(utf8-settings.ps) runlibfile
+} {
+	/encoding trap
+} ifelse }ifelse
 
 /draw-zip-frame false setdef
 /new-year-card true setdef
@@ -47,7 +55,6 @@
 /address-book-filename (address.ps) setdef
 /address-list-filename (address.lst) setdef
 /return-address-filename (retadr.ps) setdef
-/encoding /EUC-H setdef
 
 /paper-width 100 mm setdef
 /paper-height 148 mm setdef
@@ -121,8 +128,8 @@
 /retname-linewidth { retname-fontsize retname-linepitch mul } def
 /retname-lineoff { retname-linewidth 0.5 mul } def
 
-
 /charbytesproc { charbytesEUC } setdef
+/CMapName /EUC-H setdef
 /verticalhome { paper-width paper-height moveto } bind def
 
 << /PageSize [ paper-width paper-height ] >> setpagedevice
@@ -260,13 +267,13 @@
 % - <retadr-setfont> -
 /retadr-setfont {
 	retadr-fontname retadr-hfontname
-	retadr-fontsize encoding drawline-setfont
+	retadr-fontsize CMapName drawline-setfont
 } def
 
 % - <retname-setfont> -
 /retname-setfont {
 	retname-fontname retname-hfontname
-	retname-fontsize encoding drawline-setfont
+	retname-fontsize CMapName drawline-setfont
 } def
 
 % s h dict(opt) ypos <draw-retadr-opt> -
@@ -380,11 +387,11 @@ currentdict end end
 
 % addressbook { exch dup length string cvs print (: ) print == } forall
 
+addressbook /default knownget not { 1 dict } if begin
 /infile address-list-filename (r) file def
 /linebuf 256 string def
 /pagecnt 1 def
 
-addressbook /default knownget not { 1 dict } if begin
 {
 	infile linebuf readline not { pop exit } if
 	1 {
@@ -405,7 +412,7 @@ addressbook /default knownget not { 1 dict } if begin
 		dup 0 3 getinterval [ 7 mm 7 mm 7.6 mm ] xshow
 		dup length 4 sub 4 getinterval [ 6.8 mm dup dup dup ] xshow
 
-		adr-fontname adr-hfontname adr-fontsize encoding drawline-setfont
+		adr-fontname adr-hfontname adr-fontsize CMapName drawline-setfont
 		paper-width 0 moveto
 		margin-right alength ADRS alength lt {
 			margin-right dup alength 1 sub aget
@@ -472,7 +479,7 @@ addressbook /default knownget not { 1 dict } if begin
 		% の配列。
 
 		% 文字列長さを計算し、一番長いものを探す。
-		name-fontname name-hfontname name-fontsize encoding drawline-setfont
+		name-fontname name-hfontname name-fontsize CMapName drawline-setfont
 		/opt << /CalcOnly true >> def
 		null 0 namelist {
 			begin
@@ -535,10 +542,12 @@ addressbook /default knownget not { 1 dict } if begin
 		} forall
 
 		/stackcount count def
+		/dictstackcount countdictstack def
 		1 dict begin gsave
 		return-address-filename run
 		grestore end
 		stackcount count ne { /stackcount trap } if
+		dictstackcount countdictstack ne { /dictstack trap } if
 
 		showpage
 		(done.\n) print flush
