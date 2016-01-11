@@ -39,12 +39,39 @@
 	} {
 		def
 	} ifelse
-} def
+} bind def
+
+/NoInitScript false setdef
+/NoDefaultScript false setdef
+
+NoInitScript not {
+	(print-address-init.ps) findlibfile {
+		exch (runnig ) print print ( ... ) print flush
+		cvx exec
+		(done.\n) print flush
+	} {
+		pop
+	} ifelse
+} if
+
+NoDefaultScript not {
+	(HOME) getenv {
+		(/.ghostscript/print-address-default.ps) strcat
+		{ (r) file } stopped {
+			$error /errorname get /undefinedfilename ne {
+				stop
+			} if
+			$error /newerror false put
+		} {
+			cvx exec
+		} ifelse
+	} if
+} if
 
 /encoding /EUC setdef
 /draw-zip-frame false setdef
 /new-year-card true setdef
-/nyc-offset new-year-card { 10 mm } { 0 } ifelse def
+/nyc-offset { new-year-card { 10 mm } { 0 } ifelse } def
 /address-book-filename (address.ps) setdef
 /address-list-filename (address.lst) setdef
 /return-address-filename (retadr.ps) setdef
@@ -92,7 +119,7 @@
 /retadr-fontsize 4 mm setdef
 /retadr-linepitch 1.3 setdef
 /retadr-indent 6 mm def
-/retadr-linegap  2 mm setdef
+/retadr-linegap 2 mm setdef
 /retadr-top-ypos { paper-height retadr-margin-top sub retadr-top sub } def
 /retadr-indent-ypos { retadr-top-ypos retadr-indent sub } def
 /retadr-bottom-ypos { margin-bottom retadr-bottom add } def
@@ -114,8 +141,6 @@
 /retname-lineoff { retname-linewidth 0.5 mul } def
 
 /verticalhome { paper-width paper-height moveto } bind def
-
-<< /PageSize [ paper-width paper-height ] >> setpagedevice
 
 /DebugDump true def
 /dump {
@@ -379,6 +404,8 @@ encoding /EUC eq {
 	/encoding trap
 } ifelse }ifelse
 /substtable drawline-substtable def
+
+<< /PageSize [ paper-width paper-height ] >> setpagedevice
 
 /infile address-list-filename (r) file def
 /linebuf 256 string def
