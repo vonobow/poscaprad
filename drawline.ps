@@ -190,7 +190,7 @@
 /drawline-subst {
 	/s exch def
 	/r rot def
-	substtable s known {
+	subst { substtable s known {
 		% 置換テーブルに要素がみつかった。
 		% 配列の場合とリテラルの場合があるが、aget・alengthで
 		% 共通に処理する。
@@ -202,7 +202,7 @@
 			/i i 1 add def
 			v type /stringtype eq {
 				% 置換先文字列
-				subst { /s v def } if
+				/s v def
 			} { v /rot eq {
 				% 回転の指定
 				/r true def
@@ -231,7 +231,7 @@
 				/drawline4 trap
 			} ifelse } ifelse } ifelse } ifelse
 		} loop
-	} if
+	} if } if
 	% /rotは必要ならば1文字ごとに出る。
 	r { /rot } if
 	s
