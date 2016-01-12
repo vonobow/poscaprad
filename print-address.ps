@@ -89,8 +89,6 @@ NoDefaultScript not {
 /adr-indent 10 mm setdef
 /adr-top 0 mm setdef
 /adr-bottom 7 mm setdef
-/adr-linewidth { adr-fontsize adr-linepitch mul } def
-/adr-lineoff { adr-linewidth 0.5 mul } def
 /adr-top-ypos { paper-height margin-top sub adr-top sub } def
 /adr-indent-ypos { adr-top-ypos adr-indent sub } def
 /adr-bottom-ypos { margin-bottom adr-bottom add } def
@@ -109,8 +107,6 @@ NoDefaultScript not {
 /name-top-ypos { paper-height margin-top sub name-top sub } def
 /name-bottom-ypos { margin-bottom name-bottom add } def
 /name-height { name-top-ypos name-bottom-ypos sub abs } def
-/name-linewidth { name-fontsize name-linepitch mul } def
-/name-lineoff { name-linewidth 0.5 mul } def
 
 /retadr-margin-top 65 mm setdef
 /retadr-bottom 3 mm setdef
@@ -123,10 +119,6 @@ NoDefaultScript not {
 /retadr-top-ypos { paper-height retadr-margin-top sub retadr-top sub } def
 /retadr-indent-ypos { retadr-top-ypos retadr-indent sub } def
 /retadr-bottom-ypos { margin-bottom retadr-bottom add } def
-/retadr-height { retadr-top-ypos retadr-bottom-ypos sub abs } def
-/retadr-indent-height { retadr-height retadr-indent sub } def
-/retadr-linewidth { retadr-fontsize retadr-linepitch mul } def
-/retadr-lineoff { retadr-linewidth 0.5 mul } def
 
 /retname-top 15 mm setdef
 /retname-bottom 0 mm setdef
@@ -135,10 +127,10 @@ NoDefaultScript not {
 /retname-linepitch 1.3 setdef
 /retname-top-ypos { paper-height retadr-margin-top sub retname-top sub } def
 /retname-bottom-ypos { margin-bottom retname-bottom add } def
-/retname-height { retname-top-ypos retname-bottom-ypos sub abs } def
 /retname-spacing { name-spacing } setdef
-/retname-linewidth { retname-fontsize retname-linepitch mul } def
-/retname-lineoff { retname-linewidth 0.5 mul } def
+
+/current-linewidth { current-fontsize current-linepitch mul } bind def
+/current-lineoff { current-linewidth 0.5 mul } bind def
 
 /verticalhome { paper-width paper-height moveto } bind def
 
@@ -246,17 +238,30 @@ NoDefaultScript not {
 	end
 } bind def
 
-% vfontname hfontname size cmapname <drawline-setfont> -
+% vfontname hfontname size pitch <drawline-setfont> -
 /drawline-setfont {
-	2 dict begin
-	/cm exch def
-	/sz exch def
-	findfont sz scalefont
-	exch cm ttfComposeVerticalFont sz scalefont setfont
-	hyphen-fontname findfont sz scalefont
-	end
+	/current-linepitch exch def
+	/current-fontsize exch def
+	findfont current-fontsize scalefont
+	exch CMapName ttfComposeVerticalFont current-fontsize scalefont setfont
+	hyphen-fontname findfont current-fontsize scalefont
 	/drawline-hyphen-font exch def
 	/drawline-hfont exch def
+} bind def
+
+% str top bottom dict(opt) <draw-address> -
+/draw-address {
+	3 dict begin
+	dup type /dicttype ne { << >> } if
+	/opt exch def
+	/b exch def
+	/t exch def
+	gsave
+	current-lineoff t rmoveto
+	t b sub abs opt drawline
+	grestore
+	current-linewidth 0 rmoveto
+	end
 } bind def
 
 % str <draw-retzip> -
@@ -270,63 +275,42 @@ NoDefaultScript not {
 	s 0 3 getinterval [ 4 mm 4 mm 5 mm ] xshow
 	s dup length 4 sub 4 getinterval [ 4 mm 4 mm 4 mm 4 mm ] xshow
 	end
-} def
+} bind def
 
 % - <retadr-setfont> -
 /retadr-setfont {
 	retadr-fontname retadr-hfontname
-	retadr-fontsize CMapName drawline-setfont
-} def
+	retadr-fontsize retadr-linepitch drawline-setfont
+} bind def
 
 % - <retname-setfont> -
 /retname-setfont {
 	retname-fontname retname-hfontname
-	retname-fontsize CMapName drawline-setfont
-} def
-
-% s h dict(opt) ypos <draw-retadr-opt> -
-% 差出人住所（フルスペック）
-/draw-retadr-opt {
-	gsave
-	retadr-lineoff exch rmoveto
-	drawline
-	grestore
-	retadr-linewidth 0 rmoveto
-} def
+	retname-fontsize retname-linepitch drawline-setfont
+} bind def
 
 % str <draw-retadr-first> -
 % 差出人住所最初の行
 /draw-retadr-first {
-	retadr-height retadr-top-ypos draw-retadr-opt
-} def
+	retadr-top-ypos retadr-bottom-ypos draw-address
+} bind def
 
 % str <draw-retadr-next> -
 % 差出人住所2行目以降最終行以外
 /draw-retadr-next {
-	retadr-indent-height << /Align /Top >> retadr-indent-ypos draw-retadr-opt
-} def
+	retadr-indent-ypos retadr-bottom-ypos draw-address
+} bind def
 
 % str <draw-retadr-last> -
 % 差出人住所最終行
 /draw-retadr-last {
-	retadr-indent-height << /Align /Bottom >>
-	retadr-indent-ypos draw-retadr-opt
-} def
-
-% s h dict(pot) ypos <draw-retname-opt> -
-% 差出人氏名（フルスペック）
-/draw-retname-opt {
-	gsave
-	retname-lineoff exch rmoveto
-	drawline
-	grestore
-	retname-linewidth 0 rmoveto
+	retadr-indent-ypos retadr-bottom-ypos << /Align /Bottom >> draw-address
 } bind def
 
 % str <draw-retname> -
 % 差出人氏名
 /draw-retname {
-	retname-height << /Align /Justify >> retname-top-ypos draw-retname-opt
+	retname-top-ypos retname-bottom-ypos << /Align /Justify >> draw-address
 } bind def
 
 % str str <draw-retlist-setup> -
@@ -336,11 +320,12 @@ NoDefaultScript not {
 	10 dict begin
 	/gn exch def
 	/fn exch def
-	/h retname-height def
-	gsave matrix currentmatrix nulldevice setmatrix
-	0 0 moveto fn h drawline currentpoint /fh exch def pop
-	0 0 moveto gn h drawline currentpoint /gh exch def pop
-	/spc retname-fontsize name-spacing mul def
+	/h retname-top-ypos retname-bottom-ypos sub abs def
+	/opt << /CalcOnly true >> def
+	gsave
+	fn 0 opt drawline opt /StringHeight get /fh exch def
+	gn 0 opt drawline opt /StringHeight get /gh exch def
+	/spc current-fontsize retname-spacing mul def
 	/totalheight fh spc add gh add def
 	totalheight h lt {
 		/fh h spc sub fh mul fh gh add div def
@@ -350,6 +335,7 @@ NoDefaultScript not {
 		dup fh mul /fh exch def
 		gh mul /gh exch def
 	} ifelse
+	/y1 retname-top-ypos fh sub def
 	/y2 retname-bottom-ypos gh add def
 	grestore
 	currentdict
@@ -363,13 +349,10 @@ NoDefaultScript not {
 % draw-retlist-info辞書が使用される。
 /draw-retlist {
 	draw-retlist-info begin
-	1 dict begin
 	gsave
-	gh << /Align /Justify >> y2 draw-retname-opt
+	y2 retname-bottom-ypos << /Align /Justify >> draw-address
 	grestore
-	fh << /Align /Justify /Continue true >>
-	retname-top-ypos draw-retname-opt
-	end
+	retname-top-ypos y1 << /Align /Justify /Continue true >> draw-address
 	end
 } bind def
 
@@ -431,7 +414,7 @@ encoding /EUC eq {
 		dup 0 3 getinterval [ 7 mm 7 mm 7.6 mm ] xshow
 		dup length 4 sub 4 getinterval [ 6.8 mm dup dup dup ] xshow
 
-		adr-fontname adr-hfontname adr-fontsize CMapName drawline-setfont
+		adr-fontname adr-hfontname adr-fontsize adr-linepitch drawline-setfont
 		paper-width 0 moveto
 		margin-right alength ADRS alength lt {
 			margin-right dup alength 1 sub aget
@@ -441,20 +424,20 @@ encoding /EUC eq {
 		neg 0 rmoveto
 
 		gsave
-		adr-lineoff neg adr-top-ypos rmoveto
+		current-lineoff neg adr-top-ypos rmoveto
 		ADRS 0 aget adr-height drawline
 		grestore
-		adr-linewidth neg 0 rmoveto
+		current-linewidth neg 0 rmoveto
 		ADRS alength 1 gt {
 			ADRS 1 ADRS length 2 sub getinterval {
 				gsave
-				adr-lineoff neg adr-indent-ypos rmoveto
+				current-lineoff neg adr-indent-ypos rmoveto
 				adr-indent-height drawline
 				grestore
-				adr-linewidth neg 0 rmoveto
+				current-linewidth neg 0 rmoveto
 			} forall
 			ADRS dup length 1 sub get
-			adr-lineoff neg adr-indent-ypos rmoveto
+			current-lineoff neg adr-indent-ypos rmoveto
 			adr-indent-height << /Align /Bottom >> drawline
 		} if
 
@@ -498,7 +481,8 @@ encoding /EUC eq {
 		% の配列。
 
 		% 文字列長さを計算し、一番長いものを探す。
-		name-fontname name-hfontname name-fontsize CMapName drawline-setfont
+		name-fontname name-hfontname name-fontsize
+		name-linepitch drawline-setfont
 		/opt << /CalcOnly true >> def
 		null 0 namelist {
 			begin
@@ -536,7 +520,7 @@ encoding /EUC eq {
 
 		% 2行以上ある場合は名前全体の中央が紙面中央に来るようにする。
 		paper-width 0.5 mul 0 moveto
-		namelist length 1 sub name-lineoff mul name-hoffset sub
+		namelist length 1 sub current-lineoff mul name-hoffset sub
 		name-top-ypos rmoveto
 
 		% 姓を書く
@@ -557,7 +541,7 @@ encoding /EUC eq {
 			} ifelse
 			grestore
 			end
-			name-linewidth neg 0 rmoveto
+			current-linewidth neg 0 rmoveto
 		} forall
 
 		/stackcount count def
