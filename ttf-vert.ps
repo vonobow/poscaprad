@@ -77,6 +77,14 @@
 	} ifelse
 } bind def
 
+% <default> <dict> <key> knownget <val>
+% return value for key in dict, if found.
+% return default if else.
+% order of parameter is different from defaultget in akamoz-util.ps
+/tinydefaultget {
+	knownget { exch pop } if
+} bind def
+
 % int [ isdigit ] bool
 /isdigit {
 	dup 16#30 ge
@@ -710,6 +718,15 @@
 	/CIDMap exch def
 } bind def
 
+% str <calcvertcenter> num
+/calcvertcenter {
+	gsave
+	initmatrix newpath 0 0 moveto
+	true charpath flattenpath pathbbox
+	exch pop add 0.5 mul exch pop
+	grestore
+} bind def
+
 currentdict end
 /ttfVerticalizeProc exch readonly def
 
@@ -830,30 +847,39 @@ currentdict end
 } bind def
 
 % hfont str <ttfVerticalCenterShow> -
+% hfont str optdict <ttfVerticalCenterShow> -
 % 縦書きフォントの状態で呼び出す。
 % 縦書きフォントのままstrを書いた場合の
 % 各文字の縦方向の送り量の最大値(dy)の半分だけ進み、
 % 横書きフォントに切り替え、横方向にstringwidthの半分だけ戻り、
 % 縦方向はcharpathの半分だけ戻って表示。
 % grestore後、dyだけ進む。
+% optdict: /VerticalPitch 縦方向の送り量（ユーザー空間）
+%	Y正方向が上の場合は負の数を指定することになるので注意。
+% optdict: /HeightString 文字の高さを求めるための文字列。
+%	省略するとstrがそのまま使われる。
 /ttfVerticalCenterShow {
-	5 dict begin
+	//ttfVerticalizeProc begin
+	6 dict begin
+	dup type /dicttype ne { << >> } if /opt exch def
 	/str exch def
 	/hfont exch def
-	0 {
-		3 1 roll pop pop 
-		1 index abs 1 index abs lt { exch } if pop
-	} str cshow
+	opt /VerticalPitch knownget not {
+		0 {
+			3 1 roll pop pop
+			1 index abs 1 index abs lt { exch } if pop
+		} str cshow
+	} if
 	/dy exch def
 	gsave
-	currentpoint
 	hfont setfont
-	0 0 moveto str true charpath flattenpath pathbbox
-	4 array astore dup 1 get exch 3 get add -0.5 mul /cy exch def
-	currentpoint pop -0.5 mul /cx exch def
-	moveto cx cy dy 0.5 mul add rmoveto str show
-	grestore 0 dy rmoveto
-	end
+	/cx str stringwidth pop def
+	/cy str opt /HeightString tinydefaultget calcvertcenter def
+	cx -0.5 mul dy 0.5 mul cy sub rmoveto
+	str show
+	grestore
+	0 dy rmoveto
+	end end
 } bind def
 
 % hfont str bool [ optdict ] <ttfVerticalRotateShow>
@@ -874,14 +900,18 @@ currentdict end
 	/topdown exch def
 	/str exch def
 	/hfont exch def
-	gsave currentpoint
-	hfont setfont 0 0 moveto 
-	optdict /HeightString knownget not { str } if
-	true charpath flattenpath pathbbox
-	4 array astore dup 1 get exch 3 get add 0.5 mul /cx exch def
-	moveto cx topdown not { neg } if 0 rmoveto
-	hfont [ 0 -1 topdown { neg } if dup neg 0 0 0 ] makefont setfont str show
-	currentpoint grestore moveto cx topdown { neg } if 0 rmoveto
+	gsave
+		hfont setfont
+		str optdict /HeightString tinydefaultget
+		calcvertcenter /dy exch def
+		currentpoint translate
+		topdown { 90 } { -90 } ifelse rotate
+		0 dy neg moveto
+		str show
+		0 dy rmoveto
+		currentpoint transform
+	grestore
+	itransform moveto
 	end end
 } bind def
 
@@ -922,7 +952,7 @@ currentdict end
 
 	% have fun!
 	setfont 36 36 scale
-	1 20 moveto crossmark (縦書き「よっしゃー！」。) show
+	1 20 moveto crossmark (縦書き「キャッチャー！」。) show
 
 	% Or, if you have fonts which names are "font" for the original,
 	% "font-Unity" for the unity (identity) font,
@@ -934,11 +964,42 @@ currentdict end
 	% font for explaining ttfVerticalCenterShow and ttfVerticalRotateShow.
 	/hfont /Arial findfont def
 
-	4 20 moveto crossmark
-	(縦書き) show
-	hfont (ABCxyz) false ttfVerticalRotateShow
-	(縦書き) show
-	hfont (xyz) ttfVerticalCenterShow
-	(縦書き。) show
+	8.5 11 translate
+	0.5 1 scale
+	8 {
+		0 -1 moveto crossmark
+		gsave
+		0 setlinewidth 0 -15 rlineto stroke
+		grestore
+		(縦書き) show
+		hfont (ABCxyz) false << /HeightString (A) >> ttfVerticalRotateShow
+		(縦書き) show
+		hfont (xyz) ttfVerticalCenterShow
+		(縦書き。) show
+		45 rotate
+	} repeat
+	showpage
+
+	% inverted Y coordinate system
+	36 -36 scale
+	8.5 -11 translate
+	0.6 0.8 scale
+	/hfont /Arial findfont [ 1 0 0 -1 0 0 ] makefont 0.7 scalefont def
+	0 0 moveto crossmark
+	/MS-Gothic /90ms-RKSJ-H ttfComposeVerticalFont
+	[ 1 0 0 -1 0 0 ] makefont setfont
+	8 {
+		0 1 moveto crossmark
+		gsave
+		0 setlinewidth 0 15 rlineto stroke
+		grestore
+		crossmark (縦書き) show crossmark
+		hfont (Ag) true << /HeightString (A) >> ttfVerticalRotateShow
+		crossmark (縦書き) show crossmark
+		hfont (Ag) << /VerticalPitch 0.7 >> ttfVerticalCenterShow
+		crossmark (縦書き。) show crossmark
+		45 rotate
+	} repeat
+	showpage
 
 } pop
