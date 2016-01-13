@@ -1,0 +1,208 @@
+% str <str2num> num
+/str2num {
+	0 exch { exch 8 bitshift add } forall
+} bind def
+
+% file num <forward> -
+/forward {
+	1 index fileposition add setfileposition
+} bind def
+
+% file pos <saveandseek> file oldpos
+/saveandseek {
+	1 index fileposition
+	exch 2 index exch setfileposition
+} bind def
+
+% num <print1hex> -
+/print1hex {
+	15 and
+	dup 10 lt {
+		(0123456789) exch 1 getinterval print
+	} {
+		(abcdef) exch 10 sub 1 getinterval print
+	} ifelse
+} bind def
+
+% num <print2hex> -
+/print2hex {
+	dup -4 bitshift print1hex print1hex
+} bind def
+
+% num <print4hex> -
+/print4hex {
+	dup -8 bitshift print2hex print2hex
+} bind def
+
+% num <print8hex> -
+/print8hex {
+	dup -16 bitshift print4hex print4hex
+} bind def
+
+% file <ttfReadCmapFormat12> -
+%	format (USHORT) is already read.
+/ttfReadCmapFormat12 {
+	1 dict begin
+	/f exch def
+	/b4 4 string def
+	/b16 16 string def
+	f 2 forward
+	f b4 readstring not { /ttfcmap12a trap } if
+	str2num /len exch def
+	f b4 readstring not { /ttfcmap12b trap } if
+	str2num 0 ne { /ttfcmap12c trap } if
+	f b4 readstring not { /ttfcmap12d trap } if
+	str2num /numgrp exch def
+	numgrp {
+		f b4 readstring not { /ttfcmap12e trap } if
+		str2num /startchar exch def
+		f b4 readstring not { /ttfcmap12f trap } if
+		str2num /endchar exch def
+		f b4 readstring not { /ttfcmap12g trap } if
+		str2num /startgid exch def
+		startchar print8hex
+		( ) print
+		endchar print8hex
+		( ) print
+		startgid b16 cvs print
+		(\n) print
+	} repeat
+	end
+} bind def
+
+% file <ttfReadCMapTable> -
+/ttfReadCMapTable {
+	1 dict begin
+	/f exch def
+	/b4 4 string def
+	/b2 2 string def
+	/enctype 0 def
+
+	f fileposition
+	f b2 readstring not { /ttfcmapv1 trap } if
+	str2num 0 ne { /ttfcmapv2 trap } if
+	f b2 readstring not { /ttfcmapn1 trap } if
+	str2num dup 0 le { /ttfcmapn2 trap } if
+	{
+		f b2 readstring not { /ttfcmappfid trap } if
+		str2num /pf exch def
+		f b2 readstring not { /ttfcmapencid trap } if
+		str2num /enc exch def
+		f b4 readstring not { /ttfcmapoffset trap } if
+		str2num /off exch def
+		pf 3 eq {
+			enc 1 eq {
+				(USC2 table is found\n) print flush
+				enctype 1 lt {
+					/enctype 1 def
+					/platform pf def
+					/encoding enc def
+					/offset off def
+				} if
+			} { enc 10 eq {
+				(USC4 table is found\n) print flush
+				enctype 2 lt {
+					/enctype 2 def
+					/platform pf def
+					/encoding enc def
+					/offset off def
+				} if
+			} if } ifelse
+		} if
+	} repeat
+	f exch setfileposition
+	enctype 1 eq {
+		(UCS2 encoding is selected\n) print flush
+	} { enctype 2 eq {
+		(UCS4 encoding is selected\n) print flush
+	} {
+		/ttfcmapnoenc trap
+	} ifelse } ifelse
+	f offset forward
+	f b2 readstring not { /ttfcmapfmt1 trap } if
+	str2num /tf exch def
+	tf 12 eq {
+		f ttfReadCmapFormat12
+	} {
+		/ttfcmapfmt2 trap
+	} ifelse
+	end
+} bind def
+
+% file <ttfReadCMapTTF> -
+/ttfReadCMapTTF {
+	1 dict begin
+	/f exch def
+	/b4 4 string def
+	/b2 2 string def
+	/tag 4 string def
+	f b4 readstring not { /ttf4r trap } if
+	<00010000> ne { /ttf4-not-ttf trap } if
+	f b2 readstring not { /ttf5r trap } if
+	str2num dup 0 le { /ttf5n trap } if
+	f 6 forward
+	{
+		f b4 readstring not { /ttf6r trap } if tag copy pop
+		f 4 forward % sum
+		f b4 readstring not { /ttf7r trap } if
+		str2num dup 0 le { /ttf7n trap } if
+		/offset exch def
+		f b4 readstring not { /ttf8r trap } if
+		str2num dup 0 le { /ttf8n trap } if
+		/len exch def
+		tag (maxp) eq {
+			f offset saveandseek
+			f b4 readstring not { /ttfmaxp1v trap } if pop
+			f b2 readstring not { /ttfmaxp1r trap } if
+			str2num dup 0 le { /ttfmaxp1gn trap } if
+			/numglyphs exch def
+			setfileposition
+		} if
+		tag (cmap) eq {
+			f offset saveandseek
+			f ttfReadCMapTable
+			setfileposition
+		} if
+	} repeat
+	end
+} bind def
+
+% file subfontid <ttfReadCMapTTC> bool
+/ttfReadCMapTTC {
+	7 dict begin
+	/sf exch def
+	/f exch def
+	/b4 4 string def
+	/b2 2 string def
+
+	1 {
+		f b4 readstring not { /ttf0r trap } if
+		(ttcf) ne { false exit } if
+		f b4 readstring not { /ttf1r trap } if
+		<00010000> lt { /ttf1v trap } if
+		f b4 readstring not { /ttf2r trap } if
+		str2num dup 0 le { /ttf2n trap } if
+		/numsubfont exch def
+		sf numsubfont ge { /ttf-subfont trap } if
+		f sf 4 mul forward
+		f b4 readstring not { /ttf3t trap } if
+		str2num f exch setfileposition
+		f ttfReadCMapTTF
+		true
+	} repeat
+	end
+} bind def
+
+% font <ttfReadCMAP> -
+/ttfReadCMap {
+	begin
+	currentdict /SubfontID known {
+		Path (r) file SubfontID ttfReadCMapTTC
+	} { false } ifelse
+	not {
+		Path (r) file ttfReadCMapTTF
+	} if
+	end
+} bind def
+
+/DFKaiSho-Md /CIDFont findresource ttfReadCMap
