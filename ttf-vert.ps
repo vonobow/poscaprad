@@ -294,6 +294,78 @@
 	//debugoutput flushfile
 } def
 
+% array pos <getsfnts> int
+/getsfnts {
+	4 dict begin
+	/pos exch def
+	/sfnts exch def
+	/got false def
+	sfnts {
+		/s exch def
+		pos s length lt {
+			s pos get
+			/got true def
+			exit
+		} if
+		/pos pos s length sub def
+	} forall
+	got
+	end
+} bind def
+
+% sfnts str <opensfnts> dict
+/opensfnts {
+	1 dict begin
+	pop	% ignore mode
+	/sfnts exch def
+	/pos 0 def
+	currentdict end
+} bind def
+
+% dict str <readsfnts> str' bool
+/readsfnts {
+	1 dict begin
+	/s exch def
+	/i 0 def
+	/mature true def
+	begin
+		s length {
+			sfnts pos getsfnts {
+				s i 2 index put pop
+			} {
+				/mature false store exit
+			} ifelse
+			/pos pos 1 add def
+			/i i 1 add store
+		} repeat
+		mature {
+			s true
+		} {
+			s 0 i getinterval false
+		} ifelse
+	end end
+} bind def
+
+% dict <sfntsposition> num
+/sfntsposition {
+	begin
+	pos
+	end
+} bind def
+
+% dict num <setsfntsposition> -
+/setsfntsposition {
+	exch begin
+	/pos exch def
+	end
+} bind def
+
+/forwardsfnts {
+	exch begin
+	pos add /pos exch def
+	end
+} bind def
+
 % str <str2num> num
 /str2num {
 	0 exch { exch 8 bitshift add } forall
@@ -311,20 +383,15 @@
 	//debugoutput flushfile
 } bind def
 
-% file num <forward> -
-/forward {
-	1 index fileposition add setfileposition
-} bind def
-
-% file pos <saveandseek> file oldpos
+% dict pos <saveandseek> dict oldpos
 /saveandseek {
-	1 index fileposition
-	exch 2 index exch setfileposition
+	1 index sfntsposition
+	exch 2 index exch setsfntsposition
 } bind def
 
-% file str4 <getversion> -
+% dict str4 <getversion> -
 /getversion {
-	readstring not { /getversion trap } if
+	readsfnts not { /getversion trap } if
 	{
 		dup 2 2 getinterval
 		1 index 0 2 getinterval str2num
@@ -333,9 +400,9 @@
 	pop
 } bind def
 
-% origin file str2 <getoffset> off
+% origin dict str2 <getoffset> off
 /getoffset {
-	readstring not { /getoffset-read trap } if
+	readsfnts not { /getoffset-read trap } if
 	str2num { dup dup (offset=%d (0x%04x), ) dprintf } ttfDebug
 	add { dup dup (position=%d (0x%08x)\n) dprintf } ttfDebug
 } bind def
@@ -355,36 +422,36 @@
 
 	{ (    DefaultLangSys ) dprintf } ttfDebug
 	off f b2 getoffset pop
-	f b2 readstring not { /scripttable-cntread /trap } if
+	f b2 readsfnts not { /scripttable-cntread /trap } if
 	str2num { dup (    LangSysCount: %d\n) dprintf } ttfDebug
 	{
 		{ dup (    Lang %d: ) dprintf } ttfDebug pop
-		f b4 readstring not { /scripttabe-langtagread /trap } if
+		f b4 readsfnts not { /scripttabe-langtagread /trap } if
 		{ dup (Tag=%s, ) dprintf } ttfDebug
 		off f b2 getoffset
 		exch (JAN ) eq {
 			f exch 2 add saveandseek
-			f b2 readstring not { /scripttable-langreqidx /trap } if
+			f b2 readsfnts not { /scripttable-langreqidx /trap } if
 			str2num { dup (      ReqFeatureIndex: %d\n) dprintf } ttfDebug pop
-			f b2 readstring not { /scripttable-featurecount /trap } if
+			f b2 readsfnts not { /scripttable-featurecount /trap } if
 			str2num dup 0 le { /scripttable-featurecount-val /trap } if
 			{ dup (      FeatureCount: %d\n) dprintf } ttfDebug
 			dup array exch
 			{
 				{ dup (      Index %d: ) dprintf } ttfDebug
 				1 index exch
-				f b2 readstring not { /scripttable-featurelist /trap } if
+				f b2 readsfnts not { /scripttable-featurelist /trap } if
 				str2num { dup (%d\n) dprintf } ttfDebug put
 			} repeat-count
 			/reqlst exch def
-			setfileposition
+			setsfntsposition
 			{ (\033[1m  kana/JAN found.\033[m\n) dprintf } ttfDebug
 			exit
 		} {
 			pop
 		} ifelse
 	} repeat-count
-	setfileposition
+	setsfntsposition
 	reqlst
 	end
 } bind def
@@ -396,11 +463,11 @@
 	/reqlst null def
 	f off saveandseek
 
-	f b2 readstring not { /scriptlist-cntread /trap } if
+	f b2 readsfnts not { /scriptlist-cntread /trap } if
 	str2num { dup (  Count: %d\n) dprintf } ttfDebug
 	{
 		{ dup (  Script %d: ) dprintf } ttfDebug pop
-		f b4 readstring not { /scriptlist-tag /trap } if
+		f b4 readsfnts not { /scriptlist-tag /trap } if
 		{ dup (Tag=%s, ) dprintf } ttfDebug
 		off f b2 getoffset
 		exch (kana) eq {
@@ -410,7 +477,7 @@
 		} ifelse
 	} repeat-count
 
-	setfileposition
+	setsfntsposition
 	reqlst
 	end
 } bind def
@@ -421,12 +488,12 @@
 	/off exch def
 	f off saveandseek
 
-	f b2 readstring not { /featurelist-cnt trap } if
+	f b2 readsfnts not { /featurelist-cnt trap } if
 	str2num { dup (  FeatureList: count %d\n) dprintf } ttfDebug
 	array {
 		3 dict begin
-		/id f b4 readstring not { /featurelist-id trap } if 4 string copy def
-		f b2 readstring not { /featurelist-off trap } if str2num
+		/id f b4 readsfnts not { /featurelist-id trap } if 4 string copy def
+		f b2 readsfnts not { /featurelist-off trap } if str2num
 		dup off add /pos exch def /off exch def
 		{
 			dup id exch (    %d: %s ) dprintf
@@ -435,7 +502,7 @@
 		} ttfDebug
 		2 copy currentdict end put pop
 	} for-array
-	3 1 roll setfileposition
+	3 1 roll setsfntsposition
 	end
 } bind def
 
@@ -445,18 +512,18 @@
 	/off exch def
 	f off saveandseek
 
-	f b2 readstring not { /featuretable-param trap } if str2num
+	f b2 readsfnts not { /featuretable-param trap } if str2num
 	{ dup (params: %d, ) dprintf } ttfDebug pop
-	f b2 readstring not { /featuretable-cnt trap } if str2num
+	f b2 readsfnts not { /featuretable-cnt trap } if str2num
 	{ dup (count: %d\n) dprintf } ttfDebug
 	array {
-		f b2 readstring not { /featuretable-lstidx trap } if
+		f b2 readsfnts not { /featuretable-lstidx trap } if
 		str2num	% array idx lstidx
 		{ dup 2 index (    %d: LookupIndex=%d\n) dprintf } ttfDebug
 		3 copy put pop pop
 	} for-array
 
-	3 1 roll setfileposition
+	3 1 roll setsfntsposition
 	end
 } bind def
 
@@ -466,14 +533,14 @@
 	/off exch def
 	f off saveandseek
 
-	f b2 readstring not { /lookuplist-cnt trap } if str2num
+	f b2 readsfnts not { /lookuplist-cnt trap } if str2num
 	{ dup (  LookupList: count=%d\n) dprintf } ttfDebug
 	array {
 		{ dup (    %d: ) dprintf } ttfDebug
 		off f b2 getoffset
 		3 copy put pop pop
 	} for-array
-	3 1 roll setfileposition
+	3 1 roll setsfntsposition
 	end
 } bind def
 
@@ -481,21 +548,21 @@
 /coverage {
 	f exch saveandseek
 
-	f b2 readstring not { /cov-fmt trap } if
+	f b2 readsfnts not { /cov-fmt trap } if
 	str2num { dup (cov-fmt=%d, ) dprintf } ttfDebug
 	<<
 		1 {
-			f b2 readstring not { /conv-count trap } if
+			f b2 readsfnts not { /conv-count trap } if
 			str2num { dup (glyphcnt=%d\n) dprintf } ttfDebug
 			array {
 				2 copy
-				f b2 readstring not { /cov-gid trap } if
+				f b2 readsfnts not { /cov-gid trap } if
 				str2num put pop
 			} for-array
 		}
 	>> { /coverage-fmt trap } default-switch
 
-	3 1 roll setfileposition
+	3 1 roll setsfntsposition
 } expand-composite def
 
 % off <subtable> dict
@@ -503,20 +570,20 @@
 	3 dict begin
 	/off exch def
 	f off saveandseek
-	f b2 readstring not { /subtable-formatread trap } if
+	f b2 readsfnts not { /subtable-formatread trap } if
 	str2num { dup (      substfmt=%d, ) dprintf } ttfDebug
 	<<
 		2 {
-			f b2 readstring not { /subtable-formatread trap } if
+			f b2 readsfnts not { /subtable-formatread trap } if
 			str2num { dup (cov-off=%d, ) dprintf } ttfDebug
 			off add { dup (pos=%d, ) dprintf } ttfDebug
 			coverage % srcarray
-			f b2 readstring not { /subtable-cnt trap } if
+			f b2 readsfnts not { /subtable-cnt trap } if
 			str2num { dup (      subst-glyphcount=%d ... ) dprintf } ttfDebug
 			1 index length 1 index ne { /subtable-unmatch trap } if
 			dict begin
 			{
-				f b2 readstring not { /subtable-data trap } if
+				f b2 readsfnts not { /subtable-data trap } if
 				str2num	def
 			} forall
 			currentdict end
@@ -524,7 +591,7 @@
 		}
 	>> { /subst-format trap } default-switch
 
-	3 1 roll setfileposition end
+	3 1 roll setsfntsposition end
 } expand-composite def
 
 % off <lookuptable> array
@@ -533,13 +600,13 @@
 	/off exch def
 	f off saveandseek
 
-	f b2 readstring not { /lookuptable-typeread trap } if
+	f b2 readsfnts not { /lookuptable-typeread trap } if
 	str2num /lutype exch def
 	{ lutype (type=%d, ) dprintf } ttfDebug
-	f b2 readstring not { /lookuptable-flagread trap } if
+	f b2 readsfnts not { /lookuptable-flagread trap } if
 	str2num /flag exch def
 	{ flag (flag=%04x, ) dprintf } ttfDebug
-	f b2 readstring not { /lookuptable-countread trap } if
+	f b2 readsfnts not { /lookuptable-countread trap } if
 	str2num /cnt exch def
 	{ cnt (count=%d\n) dprintf } ttfDebug
 
@@ -550,12 +617,12 @@
 		subtbl 3 1 roll put
 	} repeat-count
 
-	setfileposition
+	setsfntsposition
 	subtbl
 	end
 } def
 
-% file offset ttfGSUB dict
+% dict offset ttfGSUB dict
 /ttfGSUB {
 	9 dict begin
 	/off exch def
@@ -618,11 +685,11 @@
 		{ { { def } forall } forall } forall
 		currentdict end
 	} ifelse
-	3 1 roll setfileposition
+	3 1 roll setsfntsposition
 	end
 } bind def
 
-% file <ttfLoadVerticalSubst> dict
+% dict <ttfLoadVerticalSubst> dict
 /ttfLoadVerticalSubst {
 	7 dict begin
 	/f exch def
@@ -630,19 +697,19 @@
 	/b2 2 string def
 	/tag 4 string def
 
-	f b4 readstring not { /ttf4r trap } if
+	f b4 readsfnts not { /ttf4r trap } if
 	<00010000> ne { /ttf4-not-ttf trap } if
-	f b2 readstring not { /ttf5r trap } if
+	f b2 readsfnts not { /ttf5r trap } if
 	str2num dup 0 le { /ttf5n trap } if
 	{ dup (number of tables: %d\n) dprintf } ttfDebug
-	f 6 forward
+	f 6 forwardsfnts
 	{
-		f b4 readstring not { /ttf6r trap } if tag copy pop
-		f 4 forward % sum
-		f b4 readstring not { /ttf7r trap } if
+		f b4 readsfnts not { /ttf6r trap } if tag copy pop
+		f 4 forwardsfnts % sum
+		f b4 readsfnts not { /ttf7r trap } if
 		str2num dup 0 le { /ttf7n trap } if
 		/offset exch def
-		f b4 readstring not { /ttf8r trap } if
+		f b4 readsfnts not { /ttf8r trap } if
 		str2num dup 0 le { /ttf8n trap } if
 		/len exch def
 		{
@@ -652,9 +719,9 @@
 		tag (maxp) eq {
 			f offset saveandseek
 			f b4 getversion
-			f b2 readstring not { /ttfmaxp1r trap } if
+			f b2 readsfnts not { /ttfmaxp1r trap } if
 			str2num { dup (  number of glyphs: %d\n) dprintf } ttfDebug pop
-			setfileposition
+			setsfntsposition
 		} if
 		tag (GSUB) eq {
 			f offset ttfGSUB /gsubtable exch def
@@ -664,7 +731,7 @@
 	gsubtable end
 } bind def
 
-% file subfontnum <ttfLoadVerticalSubstTTC> dict true | false
+% dict subfontnum <ttfLoadVerticalSubstTTC> dict true | false
 /ttfLoadVerticalSubstTTC {
 	7 dict begin
 	/sf exch def
@@ -673,24 +740,24 @@
 	/b2 2 string def
 
 	1 {
-		f b4 readstring not { /ttf0r trap } if
+		f b4 readsfnts not { /ttf0r trap } if
 		(ttcf) ne { false exit } if
-		f b4 readstring not { /ttf1r trap } if
+		f b4 readsfnts not { /ttf1r trap } if
 		<00010000> lt { /ttf1v trap } if
 		{ b4 (version: %8S\n) dprintf } ttfDebug
-		f b4 readstring not { /ttf2r trap } if
+		f b4 readsfnts not { /ttf2r trap } if
 		str2num dup 0 le { /ttf2n trap } if
 		/numsubfont exch def
 		{ numsubfont (number of fonts: %d\n) dprintf } ttfDebug
 		sf numsubfont ge { /ttf-subfont trap } if
 		null 0 1 sf {
 			{ dup (font #%d: ) dprintf } ttfDebug pop
-			f b4 readstring not { /ttf3r trap } if
+			f b4 readsfnts not { /ttf3r trap } if
 			str2num dup 0 le { /ttf3n trap } if
 			{ dup dup (offset table starts from: %d (0x%x)\n) dprintf }
 			ttfDebug exch pop
 		} for
-		f exch setfileposition
+		f exch setsfntsposition
 		f ttfLoadVerticalSubst
 		true
 	} repeat
@@ -761,12 +828,7 @@ currentdict end
 	/CIDMap get copyCIDMap
 	CIDFontType 2 eq { /FontType 42 def } if
 
-	currentdict /SubfontID known {
-		Path (r) file SubfontID ttfLoadVerticalSubstTTC
-	} { false } ifelse
-	not {
-		Path (r) file ttfLoadVerticalSubst
-	} if
+	sfnts (r) opensfnts ttfLoadVerticalSubst
 	[ 0 0 ] CIDMap {
 		% dict [ cid pos ] str
 		1 index 1 0 put
