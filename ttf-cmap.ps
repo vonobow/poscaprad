@@ -892,11 +892,13 @@
 		currentdict /subst_CID_on_WMode undef
 		/FontType 42 def
 		CIDMap copyCIDMap
-		/CIDSystemInfo <<
-			/Registry (Artifex)
-			/Ordering (Identity)
-			/Supplement 0
-		>> readonly def
+		/DEVICE /defaultdevice defaultload /pdfwrite ne {
+			/CIDSystemInfo <<
+				/Registry (Artifex)
+				/Ordering (Identity)
+				/Supplement 0
+			>> readonly def
+		} if
 	end
 
 	% create BuildGlyph CID font
@@ -969,9 +971,10 @@
 {
 	72 72 scale
 	0.5 10.5 translate
+	/fontname /MS-Mincho def
 
 	/cmapname /EUC-V def
-	/DFKaiSho-Md cmapname ttfVerticalFixupFont
+	fontname cmapname ttfVerticalFixupFont
 	1 array astore /Test exch cmapname exch composefont
 	0.5 scalefont setfont
 	0 0 moveto
@@ -980,7 +983,7 @@
 	show
 
 	/cmapname /90ms-RKSJ-V def
-	/DFKaiSho-Md cmapname ttfVerticalFixupFont
+	fontname cmapname ttfVerticalFixupFont
 	1 array astore /Test exch cmapname exch composefont
 	0.5 scalefont setfont
 	1.5 0 moveto
@@ -989,7 +992,7 @@
 	show
 
 	/cmapname /UniJIS-UTF8-V def
-	/DFKaiSho-Md cmapname ttfVerticalFixupFont
+	fontname cmapname ttfVerticalFixupFont
 	1 array astore /Test exch cmapname exch composefont
 	0.5 scalefont setfont
 	3 0 moveto
@@ -999,7 +1002,7 @@
 	show
 
 	/cmapname /UniJIS-UTF16-V def
-	/DFKaiSho-Md cmapname ttfVerticalFixupFont
+	fontname cmapname ttfVerticalFixupFont
 	1 array astore /Test exch cmapname exch composefont
 	0.5 scalefont setfont
 	4.5 0 moveto
