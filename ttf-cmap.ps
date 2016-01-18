@@ -899,6 +899,24 @@
 				/Supplement 0
 			>> readonly def
 		} if
+		/CDevProc {
+			1 dict begin
+			/cid exch def
+			10 array astore
+			/metric exch def
+			% [ w0x w0y llx lly urx ury w1x w1y vx vy ]
+			cid 231 eq {	% 半角スペース
+				metric 7 -0.5 put
+			} {
+				metric 7 -1 put
+			} ifelse
+			metric 6 0 put
+			metric 8 0.5 put
+			metric 9 1 put
+			metric ==
+			metric aload pop
+			end
+		} bind def
 	end
 
 	% create BuildGlyph CID font
@@ -969,6 +987,15 @@
 } bind def
 
 {
+	/crossmark {
+		gsave
+		0 setlinewidth
+		-0.5 0 rmoveto 1 0 rlineto
+		-0.5 -0.5 rmoveto 0 1 rlineto
+		stroke
+		grestore
+	} bind def
+
 	72 72 scale
 	0.5 10.5 translate
 	/fontname /MS-Mincho def
@@ -980,7 +1007,7 @@
 	0 0 moveto
 	% (abc!"#$「キャッチャー！」)
 	<61626321222324a1d6a5ada5e3a5c3a5c1a5e3a1bca1aaa1d7> % EUC
-	show
+	crossmark show crossmark
 
 	/cmapname /90ms-RKSJ-V def
 	fontname cmapname ttfVerticalFixupFont
@@ -989,7 +1016,7 @@
 	1.5 0 moveto
 	% (abc!"#$「キャッチャー！」)
 	<616263212223248175834c8383836283608383815b81498176> % SJIS
-	show
+	crossmark show crossmark
 
 	/cmapname /UniJIS-UTF8-V def
 	fontname cmapname ttfVerticalFixupFont
@@ -999,7 +1026,7 @@
 	% (abc!"#$「キャッチャー！」)
 	<61626321222324
 	e3808ce382ade383a3e38383e38381e383a3e383bcefbc81e3808d> % UTF-8
-	show
+	crossmark show crossmark
 
 	/cmapname /UniJIS-UTF16-V def
 	fontname cmapname ttfVerticalFixupFont
@@ -1008,7 +1035,7 @@
 	4.5 0 moveto
 	% (abc!"#$「キャッチャー！」)
 	<0061006200630021002200230024300c30ad30e330c330c130e330fcff01300d> % UCS2
-	show
+	crossmark show crossmark
 
 	showpage
 } exec
