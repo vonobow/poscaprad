@@ -769,8 +769,20 @@
 	dup length dict copy
 	dup /FID undef
 	dup /UniqueID undef
+	dup /subst_CID_on_WMode undef
 	begin
-	/XUID [ 1000000 XUID aload pop ] def
+	% XUIDがなければ [ 1,000,000 1 ]
+	% XUIDがあり、最初の要素が1,000,000以上なら最初の要素に1を足す。
+	% そうでなければ先頭に1,000,000を付け加える。
+	currentdict /XUID known {
+		XUID 0 get 1000000 ge {
+			XUID 0 2 copy get 1 add put
+		} {
+			/XUID [ 1000000 XUID aload pop ] def
+		} ifelse
+	} {
+		/XUID [ 1000000 1 ] def
+	} ifelse
 	currentdict end
 } bind def
 
@@ -797,21 +809,27 @@
 currentdict end
 /ttfVerticalizeProc exch readonly def
 
-% origfont unityfont <ttfVerticalizeCIDFont> dict'
+% origfont <ttfVerticalizeCIDFont> dict'
 /ttfVerticalizeCIDFont {
 	//ttfVerticalizeProc begin
-
 	dup type /dicttype ne {
 		/CIDFont findresource
 	} if
 	copyfont begin
 
+	CIDFontType 2 ne { /IncorrectCIDFontType /ttfvert trap } if
+	/FontType 42 def
+	/CIDSystemInfo <<
+		/Registry (Artifex)
+		/Ordering (Identity)
+		/Supplement 0
+	>> def
 	/CDevProc {
 		1 dict begin
 		/cid exch def
 		10 array astore
 		/metric exch def
-		cid 231 eq {	% 半角スペース
+		cid 1 eq cid 231 eq or {	% 半角スペース
 			metric 0 0 put
 			metric 1 -0.5 put
 		} {
@@ -822,11 +840,7 @@ currentdict end
 		end
 	} bind def
 
-	dup type /dicttype ne {
-		/CIDFont findresource
-	} if
-	/CIDMap get copyCIDMap
-	CIDFontType 2 eq { /FontType 42 def } if
+	CIDMap copyCIDMap
 
 	sfnts (r) opensfnts ttfLoadVerticalSubst
 	[ 0 0 ] CIDMap {
@@ -861,7 +875,7 @@ currentdict end
 	currentdict end end
 } bind def
 
-% cidfontname <ttfOffsetVertical> matrix
+% cidfontname | cidfont <ttfOffsetVertical> matrix
 % 現在位置から縦書きダッシュ「―」が表示されるようなFontMatrixを求める。
 % この座標変換行列を縦書きフォントにmakefontすると、
 % 現在位置がグリフの中央上に対応するようになる。
@@ -869,16 +883,19 @@ currentdict end
 % コンポジットフォントを作っている。
 /ttfOffsetVertical {
 	//ttfVerticalizeProc begin
-	2 dict begin
-	/fn exch def
-	/cfn fn dup length string cvs (-Adobe-Japan1-0) strcat def
+	dup type /dicttype ne {
+		/CIDFont findresource
+	} if
 	gsave
-	cfn /Adobe-Japan1-0 [ fn ] composefont setfont
+	/ttfOffsetVertical-Adobe-Japan1-0 exch
+	/Adobe-Japan1-0 exch 1 array astore composefont
+	setfont
 	0 0 moveto <1ed4> true charpath flattenpath pathbbox
 	grestore 4 array astore matrix exch
+	/ttfOffsetVertical-Adobe-Japan1-0 /CIDFont undefineresource
 	1 index 4 2 index 0 get 3 index 2 get add -0.5 mul put
 	1 index 5 2 index 3 get neg put pop
-	end end
+	end
 } bind def
 
 % name dict ttfDefineCIDFont dict
@@ -887,7 +904,7 @@ currentdict end
 	begin
 	/CIDFontName exch def
 	/FontName CIDFontName def
-	CIDFontName currentdict end definefont
+	CIDFontName currentdict end /CIDFont defineresource
 	end
 } bind def
 
@@ -895,15 +912,27 @@ currentdict end
 /ttfComposeVerticalFont {
 	//ttfVerticalizeProc begin
 	4 dict begin
-	dup length string cvs /cmapname exch def
-	dup length string cvs /fontname exch def
+	dup type /dicttype eq {
+		/CMapName get
+	} if
+	dup type /nametype eq {
+		dup length string cvs
+	} if
+	/cmapname exch def
+	dup type /dicttype eq {
+		/FontName get
+	} if
+	dup type /nametype eq {
+		dup length string cvs
+	} if
+	/fontname exch def
 	fontname (-Vert) strcat /vertname exch def
 
-	fontname cvn fontname (-Unity) strcat cvn ttfVerticalizeCIDFont
+	fontname ttfVerticalizeCIDFont
 	vertname cvn exch ttfDefineCIDFont /vertfont exch def
 
 	vertname (-) strcat cmapname strcat cvn
-	cmapname cvn [ vertfont vertname ttfOffsetVertical makefont ] composefont
+	cmapname cvn [ vertfont dup ttfOffsetVertical makefont ] composefont
 
 	end end
 } bind def
@@ -979,19 +1008,11 @@ currentdict end
 
 % usage
 {
-	% original font: only its CIDMap is used.
-	/MS-Mincho /CIDFont findresource
+	% Verticalise CID font
+	/MS-Mincho ttfVerticalizeCIDFont
 
-	% unity (Identity) font: define as /CSI [(Identity) 0] in cidfmap.
-	%	must be Unicode font.
-	/MS-Mincho-Unity /CIDFont findresource 
-
-	% copy unity-font and CIDMap of orig-font,
-	% verticalize by substituting ALL glyphs in GSUB/kana/JAN/vert table.
-	ttfVerticalizeCIDFont
-
-	% or, you can specify CIDFont names directly.
-	% /MS-Mincho /MS-Mincho-Unity ttfVerticalizeCIDFont
+	% or, you can specify CIDFont dictionary
+	% /MS-Mincho /CIDFont findresource ttfVerticalizeCIDFont
 
 	% define as CIDFont.
 	/MS-Mincho-Vertical exch ttfDefineCIDFont pop
@@ -1016,10 +1037,8 @@ currentdict end
 	setfont 36 36 scale
 	1 20 moveto crossmark (縦書き「キャッチャー！」。) show
 
-	% Or, if you have fonts which names are "font" for the original,
-	% "font-Unity" for the unity (identity) font,
-	% you can use ttfComposeVerticalFont.
-	% result font is named as "font-Vertical-CMap".
+	% or you can use ttfComposeVerticalFont.
+	% result font is named as "font-Vert-CMap".
 	% The font matrix of this font may be adjusted to top-center of the glyph.
 	/MS-Gothic /90ms-RKSJ-H ttfComposeVerticalFont setfont
 
