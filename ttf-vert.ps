@@ -771,9 +771,9 @@
 	dup /UniqueID undef
 	dup /subst_CID_on_WMode undef
 	begin
-	% XUID偑側偗傟偽 [ 1,000,000 1 ]
-	% XUID偑偁傝丄嵟弶偺梫慺偑1,000,000埲忋側傜嵟弶偺梫慺偵1傪懌偡丅
-	% 偦偆偱側偗傟偽愭摢偵1,000,000傪晅偗壛偊傞丅
+	% XUIDがなければ [ 1,000,000 1 ]
+	% XUIDがあり、呵介の妥燎が1,000,000笆惧なら呵介の妥燎に1を颅す。
+	% そうでなければ黎片に1,000,000を烧け裁える。
 	currentdict /XUID known {
 		XUID 0 get 1000000 ge {
 			XUID 0 2 copy get 1 add put
@@ -829,7 +829,7 @@ currentdict end
 		/cid exch def
 		10 array astore
 		/metric exch def
-		cid 1 eq cid 231 eq or {	% 敿妏僗儁乕僗
+		cid 1 eq cid 231 eq or {	% 染逞スペ〖ス
 			metric 0 0 put
 			metric 1 -0.5 put
 		} {
@@ -876,11 +876,11 @@ currentdict end
 } bind def
 
 % cidfontname | cidfont <ttfOffsetVertical> matrix
-% 尰嵼埵抲偐傜廲彂偒僟僢僔儏乽乗乿偑昞帵偝傟傞傛偆側FontMatrix傪媮傔傞丅
-% 偙偺嵗昗曄姺峴楍傪廲彂偒僼僅儞僩偵makefont偡傞偲丄
-% 尰嵼埵抲偑僌儕僼偺拞墰忋偵懳墳偡傞傛偆偵側傞丅
-% 暥帤僐乕僪偵埶懚偟側偄傛偆丄Adobe-Japan1-0 CMap傪巊偭偨
-% 僐儞億僕僢僩僼僅儞僩傪嶌偭偰偄傞丅
+% 附哼疤弥から侥今きダッシュ≈〗∽が山绩されるようなFontMatrixを滇める。
+% この郝筛恃垂乖误を侥今きフォントにmakefontすると、
+% 附哼疤弥がグリフの面丙惧に滦炳するようになる。
+% 矢机コ〖ドに巴赂しないよう、Adobe-Japan1-0 CMapを蝗った
+% コンポジットフォントを侯っている。
 /ttfOffsetVertical {
 	//ttfVerticalizeProc begin
 	dup type /dicttype ne {
@@ -939,16 +939,16 @@ currentdict end
 
 % hfont str <ttfVerticalCenterShow> -
 % hfont str optdict <ttfVerticalCenterShow> -
-% 廲彂偒僼僅儞僩偺忬懺偱屇傃弌偡丅
-% 廲彂偒僼僅儞僩偺傑傑str傪彂偄偨応崌偺
-% 奺暥帤偺廲曽岦偺憲傝検偺嵟戝抣(dy)偺敿暘偩偗恑傒丄
-% 墶彂偒僼僅儞僩偵愗傝懼偊丄墶曽岦偵stringwidth偺敿暘偩偗栠傝丄
-% 廲曽岦偼charpath偺敿暘偩偗栠偭偰昞帵丅
-% grestore屻丄dy偩偗恑傓丅
-% optdict: /VerticalPitch 廲曽岦偺憲傝検乮儐乕僓乕嬻娫乯
-%	Y惓曽岦偑忋偺応崌偼晧偺悢傪巜掕偡傞偙偲偵側傞偺偱拲堄丅
-% optdict: /HeightString 暥帤偺崅偝傪媮傔傞偨傔偺暥帤楍丅
-%	徣棯偡傞偲str偑偦偺傑傑巊傢傟傞丅
+% 侥今きフォントの觉轮で钙び叫す。
+% 侥今きフォントのままstrを今いた眷圭の
+% 称矢机の侥数羹の流り翁の呵络猛(dy)の染尸だけ渴み、
+% 玻今きフォントに磊り仑え、玻数羹にstringwidthの染尸だけ提り、
+% 侥数羹はcharpathの染尸だけ提って山绩。
+% grestore稿、dyだけ渴む。
+% optdict: /VerticalPitch 侥数羹の流り翁∈ユ〖ザ〖鄂粗∷
+%	Y赖数羹が惧の眷圭は砷の眶を回年することになるので庙罢。
+% optdict: /HeightString 矢机の光さを滇めるための矢机误。
+%	臼维するとstrがそのまま蝗われる。
 /ttfVerticalCenterShow {
 	//ttfVerticalizeProc begin
 	6 dict begin
@@ -974,12 +974,12 @@ currentdict end
 } bind def
 
 % hfont str bool [ optdict ] <ttfVerticalRotateShow>
-% 廲彂偒偵90搙夞揮偟偨墶彂偒傪崿偤傞丅
-% bool偑false偺応崌偼忋偑Y幉僾儔僗丄true偺応崌偼壓偑Y幉僾儔僗丅
-% str傪hfont偱彂偄偨偲偒偺尨揰偲廲拞墰偺暘偩偗墶曽岦偵偢傜偟丄
-% hfont傪墶偵90搙夞偟偰str傪幚嵺偵彂偔丅
-% optdict: /HeightString 暥帤偺崅偝傪媮傔傞偨傔偺暥帤楍丅
-%	徣棯偡傞偲str偑偦偺傑傑巊傢傟傞丅
+% 侥今きに90刨搀啪した玻今きを寒ぜる。
+% boolがfalseの眷圭は惧がY即プラス、trueの眷圭は布がY即プラス。
+% strをhfontで今いたときの付爬と侥面丙の尸だけ玻数羹にずらし、
+% hfontを玻に90刨搀してstrを悸狠に今く。
+% optdict: /HeightString 矢机の光さを滇めるための矢机误。
+%	臼维するとstrがそのまま蝗われる。
 /ttfVerticalRotateShow {
 	//ttfVerticalizeProc begin
 	5 dict begin
@@ -1035,7 +1035,7 @@ currentdict end
 
 	% have fun!
 	setfont 36 36 scale
-	1 20 moveto crossmark (廲彂偒乽僉儍僢僠儍乕両乿丅) show
+	1 20 moveto crossmark (侥今き≈キャッチャ〖—∽。) show
 
 	% or you can use ttfComposeVerticalFont.
 	% result font is named as "font-Vert-CMap".
@@ -1052,11 +1052,11 @@ currentdict end
 		gsave
 		0 setlinewidth 0 -15 rlineto stroke
 		grestore
-		(廲彂偒) show
+		(侥今き) show
 		hfont (ABCxyz) false << /HeightString (A) >> ttfVerticalRotateShow
-		(廲彂偒) show
+		(侥今き) show
 		hfont (xyz) ttfVerticalCenterShow
-		(廲彂偒丅) show
+		(侥今き。) show
 		45 rotate
 	} repeat
 	showpage
@@ -1074,11 +1074,11 @@ currentdict end
 		gsave
 		0 setlinewidth 0 15 rlineto stroke
 		grestore
-		crossmark (廲彂偒) show crossmark
+		crossmark (侥今き) show crossmark
 		hfont (Ag) true << /HeightString (A) >> ttfVerticalRotateShow
-		crossmark (廲彂偒) show crossmark
+		crossmark (侥今き) show crossmark
 		hfont (Ag) << /VerticalPitch 0.7 >> ttfVerticalCenterShow
-		crossmark (廲彂偒丅) show crossmark
+		crossmark (侥今き。) show crossmark
 		45 rotate
 	} repeat
 	showpage
