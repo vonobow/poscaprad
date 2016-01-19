@@ -61,9 +61,11 @@
 45 dict begin
 
 % /DebugDump true def
+/ttfVerboseDump true def
 % /ttfDebugDump true def
 % /ttfVerbose true def
 
+/ttfDebugVerbose { /ttfVerboseDump false defaultload exch if } bind def
 /ttfDebug { /ttfDebugDump false defaultload exch if } bind def
 /ttfVerboseLog { /ttfVerbose false defaultload exch if } bind def
 
@@ -413,15 +415,33 @@
 	exch 0 exch 1 exch 1 sub 4 -1 roll for
 } bind def
 
+% off <langsystable> reqlst
+/langsystable {
+	f 2 forwardsfnts
+	f b2 readsfnts not { /scripttable-langreqidx /trap } if
+	str2num { dup (      ReqFeatureIndex: %d\n) dprintf } ttfDebug pop
+	f b2 readsfnts not { /scripttable-featurecount /trap } if
+	str2num dup 0 le { /scripttable-featurecount-val /trap } if
+	{ dup (      FeatureCount: %d\n) dprintf } ttfDebug
+	dup array exch
+	{
+		{ dup (      Index %d: ) dprintf } ttfDebug
+		1 index exch
+		f b2 readsfnts not { /scripttable-featurelist /trap } if
+		str2num { dup (%d\n) dprintf } ttfDebug put
+	} repeat-count
+} bind def
+
 % off <scripttable> array
 /scripttable {
 	5 dict begin
 	/off exch def
 	/reqlst null def
+	/JAN-notfound true def
 	f off saveandseek
 
 	{ (    DefaultLangSys ) dprintf } ttfDebug
-	off f b2 getoffset pop
+	off f b2 getoffset /default-langsys-offset exch def
 	f b2 readsfnts not { /scripttable-cntread /trap } if
 	str2num { dup (    LangSysCount: %d\n) dprintf } ttfDebug
 	{
@@ -430,27 +450,25 @@
 		{ dup (Tag=%s, ) dprintf } ttfDebug
 		off f b2 getoffset
 		exch (JAN ) eq {
-			f exch 2 add saveandseek
-			f b2 readsfnts not { /scripttable-langreqidx /trap } if
-			str2num { dup (      ReqFeatureIndex: %d\n) dprintf } ttfDebug pop
-			f b2 readsfnts not { /scripttable-featurecount /trap } if
-			str2num dup 0 le { /scripttable-featurecount-val /trap } if
-			{ dup (      FeatureCount: %d\n) dprintf } ttfDebug
-			dup array exch
-			{
-				{ dup (      Index %d: ) dprintf } ttfDebug
-				1 index exch
-				f b2 readsfnts not { /scripttable-featurelist /trap } if
-				str2num { dup (%d\n) dprintf } ttfDebug put
-			} repeat-count
+			f exch saveandseek
+			langsystable
 			/reqlst exch def
 			setsfntsposition
 			{ (\033[1m  kana/JAN found.\033[m\n) dprintf } ttfDebug
+			/JAN-notfound false def
 			exit
 		} {
 			pop
 		} ifelse
 	} repeat-count
+	JAN-notfound {
+		{ (    no-JAN table, parse DefaultLangSys:\n) dprintf } ttfDebug
+		f default-langsys-offset
+		dup 0 eq { /scripttable-noJAN-nodefault trap } if
+		setsfntsposition
+		langsystable
+		/reqlst exch def
+	} if
 	setsfntsposition
 	reqlst
 	end
@@ -853,8 +871,8 @@ currentdict end
 				{
 					4 index 0 get (cid %d: ) dprintf
 					dup (src=%d -> ) dprintf
-				} ttfDebug
-				get { dup (dst=%d\n) dprintf } ttfDebug
+				} ttfDebugVerbose
+				get { dup (dst=%d\n) dprintf } ttfDebugVerbose
 				% dict [ cid pos ] str substr dstcid
 				GDBytes { dup 16#ff and exch -8 bitshift } repeat pop
 				GDBytes index GDBytes { % value substr idx
@@ -1008,6 +1026,12 @@ currentdict end
 
 % usage
 {
+	% Shift-JIS strings
+	% (縦書き「キャッチャー！」。)
+	/s1 <8f638f9182ab8175834c8383836283608383815b814981768142> def
+	/s2 <8f638f9182ab> def	% (縦書き)
+	/s3 <8f638f9182ab8142> def	% (縦書き。)
+
 	% Verticalise CID font
 	/MS-Mincho ttfVerticalizeCIDFont
 
@@ -1035,12 +1059,12 @@ currentdict end
 
 	% have fun!
 	setfont 36 36 scale
-	1 20 moveto crossmark (縦書き「キャッチャー！」。) show
+	1 20 moveto crossmark s1 show
 
 	% or you can use ttfComposeVerticalFont.
 	% result font is named as "font-Vert-CMap".
 	% The font matrix of this font may be adjusted to top-center of the glyph.
-	/MS-Gothic /90ms-RKSJ-H ttfComposeVerticalFont setfont
+	/IPAexGothic /90ms-RKSJ-H ttfComposeVerticalFont setfont
 
 	% font for explaining ttfVerticalCenterShow and ttfVerticalRotateShow.
 	/hfont /Arial findfont def
@@ -1052,11 +1076,11 @@ currentdict end
 		gsave
 		0 setlinewidth 0 -15 rlineto stroke
 		grestore
-		(縦書き) show
+		s2 show
 		hfont (ABCxyz) false << /HeightString (A) >> ttfVerticalRotateShow
-		(縦書き) show
+		s2 show
 		hfont (xyz) ttfVerticalCenterShow
-		(縦書き。) show
+		s3 show
 		45 rotate
 	} repeat
 	showpage
@@ -1067,18 +1091,18 @@ currentdict end
 	0.6 0.8 scale
 	/hfont /Arial findfont [ 1 0 0 -1 0 0 ] makefont 0.7 scalefont def
 	0 0 moveto crossmark
-	/MS-Gothic /90ms-RKSJ-H ttfComposeVerticalFont
+	/IPAexMincho /90ms-RKSJ-H ttfComposeVerticalFont
 	[ 1 0 0 -1 0 0 ] makefont setfont
 	8 {
 		0 1 moveto crossmark
 		gsave
 		0 setlinewidth 0 15 rlineto stroke
 		grestore
-		crossmark (縦書き) show crossmark
+		crossmark s2 show crossmark
 		hfont (Ag) true << /HeightString (A) >> ttfVerticalRotateShow
-		crossmark (縦書き) show crossmark
+		crossmark s2 show crossmark
 		hfont (Ag) << /VerticalPitch 0.7 >> ttfVerticalCenterShow
-		crossmark (縦書き。) show crossmark
+		crossmark s3 show crossmark
 		45 rotate
 	} repeat
 	showpage
