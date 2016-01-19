@@ -89,62 +89,87 @@
 	end
 } bind def
 
-% array pos <getsfnts> int true
-% array pos <getsfnts> false
-/getsfnts {
-	4 dict begin
-	/pos exch def
-	/sfnts exch def
-	/got false def
-	sfnts {
-		/s exch def
-		pos s length lt {
-			s pos get
-			/got true def
-			exit
-		} if
-		/pos pos s length sub def
-	} forall
-	got
-	end
-} bind def
-
 % sfnts <opensfnts> dict
 /opensfnts {
 	1 dict begin
 	/sfnts exch def
+	sfnts type /stringtype eq {
+		/sfnts [ sfnts ] def
+	} if
+	/idx 0 def
 	/pos 0 def
+	/top 0 def
+	/buf null def
 	currentdict end
 } bind def
 
-% dict str <readsfnts> str' bool
+% dict <getsfnts> ( int true ) | false
+/getsfnts {
+	begin 1 dict begin
+	/got false def
+	buf null eq {
+		/p 0 def
+		/i 0 def
+		sfnts {
+			dup length p add pos gt {
+				/idx i store
+				/buf exch store
+				/top p store
+				/pos pos top sub store
+				exit
+			} if
+			length p add /p exch def
+			/i i 1 add def
+		} forall
+	} if
+	buf null ne {
+		idx sfnts length lt {
+			pos buf length lt {
+				buf pos get
+				/pos pos 1 add store
+				/got true def
+				pos buf length eq {
+					/top top pos add store
+					/pos 0 store
+					/idx idx 1 add store
+					idx sfnts length lt {
+						/buf sfnts idx get store
+					} if
+				} if
+			} if
+		} if
+	} if
+	got
+	end end
+} bind def
+
+% dict str <readsfnts> substr bool
 /readsfnts {
 	1 dict begin
 	/s exch def
+	/f exch def
 	/i 0 def
 	/mature true def
-	begin
-		s length {
-			sfnts pos getsfnts {
-				s i 2 index put pop
-			} {
-				/mature false store exit
-			} ifelse
-			/pos pos 1 add def
-			/i i 1 add store
-		} repeat
-		mature {
-			s true
+	s length {
+		f getsfnts {
+			s i 2 index put pop
 		} {
-			s 0 i getinterval false
+			/mature false def exit
 		} ifelse
-	end end
+		/i i 1 add store
+	} repeat
+	mature {
+		s true
+	} {
+		s 0 i getinterval false
+	} ifelse
+	end
 } bind def
 
 % dict <sfntsposition> num
 /sfntsposition {
 	begin
-	pos
+	top pos add
 	end
 } bind def
 
@@ -152,13 +177,13 @@
 /setsfntsposition {
 	exch begin
 	/pos exch def
+	/buf null def
+	/top 0 def
 	end
 } bind def
 
 /forwardsfnts {
-	exch begin
-	pos add /pos exch def
-	end
+	1 index sfntsposition add setsfntsposition
 } bind def
 
 % str <str2num> num
@@ -1039,4 +1064,3 @@
 
 	showpage
 } exec
-quit
