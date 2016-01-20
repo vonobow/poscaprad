@@ -1,0 +1,322 @@
+%!
+
+currentglobal
+false setglobal
+
+/cmapDebug { exec } def
+/cmapVerbose { pop } def
+
+% <obj> <proc> exec-forall -
+/exec-forall {
+	1 index type /arraytype eq {
+		forall
+	} {
+		1 exch repeat
+	} ifelse
+} bind def
+
+% num proc <repeat-count> -
+/repeat-count {
+	exch 0 exch 1 exch 1 sub 4 -1 roll for
+} bind def
+
+% str <str2num> num
+/str2num {
+	0 exch { exch 8 bitshift add } forall
+} bind def
+
+% lowbits <initdictarray> dict
+/initdictarray {
+	2 dict
+	begin
+	/lowbits exch def
+	/numelem 1 lowbits bitshift def
+	/lowmask numelem 1 sub def
+	/hishift lowbits neg def
+	/himax -1 def
+	/maxkey -1 def
+	currentdict end
+} bind def
+
+% dict key val <putdictarray> -
+/putdictarray {
+	2 dict begin
+	/v exch def
+	/k exch def
+	begin
+	k hishift bitshift
+	currentdict 1 index known not {
+		currentdict 1 index numelem array put
+		dup himax gt {
+			dup /himax exch def
+		} if
+	} if
+	load k lowmask and v put
+	maxkey k lt { /maxkey k def } if
+	end end
+} bind def
+
+% dict key <getdictarray> val
+/getdictarray {
+	1 dict begin
+	/k exch def
+	begin
+	k hishift bitshift
+	currentdict 1 index known {
+		load k lowmask and get
+	} {
+		pop null
+	} ifelse
+	end end
+} bind def
+
+% dicarray proc <dictarrayforall> -
+%	proc is called with:
+%		key value <proc> -
+/dictarrayforall {
+	5 dict begin
+	/p exch def
+	/d exch def
+	/m d /numelem get def
+	0 1 d /himax get {
+		/h exch def
+		d h known {
+			/k h m mul def
+			d h get {
+				dup null eq {
+					pop
+				} {
+					k exch p
+				} ifelse
+				/k k 1 add def
+			} forall
+		} if
+	} for
+	end
+} bind def
+
+% strarray pos size  <getstrarray> substr true
+% strarray pos size <getstrarray> false
+/getstrarray {
+	4 dict begin
+	/sz exch def
+	/pos exch def
+	/got false def
+	{
+		/s exch def
+		pos s length lt {
+			s pos sz getinterval
+			/got true def
+			exit
+		} if
+		/pos pos s length sub def
+	} exec-forall
+	got
+	end
+} bind def
+
+/aprint {
+	1 dict begin
+	{
+		/val exch def
+		1 {
+			val type /nametype eq { val dup length string cvs print exit } if
+			val type /stringtype eq { val print exit } if
+			val type /integertype eq { val 16 string cvs print exit } if
+			val type /nulltype eq { (null) print exit } if
+			/aprint trap
+		} repeat
+	} exec-forall
+	end
+} def
+
+1 dict begin
+
+/begincmap {
+	{ (begincmap\n) aprint } cmapDebug
+	/ForwardCMap 10 initdictarray def
+	/ReverseCMap 8 initdictarray def
+} bind def
+
+/usecmap {
+	256 string ResourceFileName
+	{ [ (usecmap: ) 2 index (\n) ] aprint } cmapDebug
+	(r) file dup cvx exec closefile
+} bind def
+
+/begincodespacerange {
+	{ (begincodespacerange\n) aprint } cmapVerbose
+	mark
+} bind def
+
+/endcodespacerange {
+	{ (endcodespacerange\n) aprint } cmapVerbose
+	cleartomark pop
+} bind def
+
+/beginnotdefrange {
+	{ (beginnotdefrange\n) aprint } cmapVerbose
+	mark
+} bind def
+
+/endnotdefrange {
+	{ (endnotdefrange\n) aprint } cmapVerbose
+	cleartomark pop
+} bind def
+
+/begincidchar {
+	{ (begincidchar\n) aprint } cmapDebug
+	mark
+} bind def
+
+/endcidchar {
+	{ (endcidchar\n) aprint } cmapDebug
+	cleartomark pop
+} bind def
+
+/begincidrange {
+	{ (begincidrange\n) aprint } cmapDebug
+	mark
+} bind def
+
+% dictarray key value <appenddictarray> -
+/appenddictarray {
+	2 index 2 index getdictarray	% dict key newval curval
+	dup null eq {	% the first value
+		pop putdictarray
+	} { dup type /arraytype ne {	% the second value
+		2 array astore putdictarray
+	} {	% any more
+		aload length 1 add array astore putdictarray
+	} ifelse } ifelse
+} bind def
+
+/endcidrange {
+	{ (endcidrange\n) aprint } cmapDebug
+	] 1 index 3 mul 1 index length ne { /endcidrange trap } if
+	exch {
+		1 index exch 3 mul 3 getinterval
+		dup 2 get
+		1 index 0 get str2num 1 3 index 1 get str2num {
+			ForwardCMap 1 index 3 index appenddictarray
+			ReverseCMap 2 index 2 index appenddictarray
+			pop 1 add
+		} for
+		pop pop
+	} repeat-count
+	pop
+} bind def
+
+/endcmap {
+	{ (endcmap\n) aprint } cmapDebug
+} bind def
+
+/defineresource {
+	{ (defineresource\n) aprint } cmapDebug
+	pop begin pop
+	{ [ (end of CMap ) CMapName (\n) ] aprint } cmapDebug
+	WMode 0 eq {
+		{ (Horizontal writing\n) print } cmapDebug
+		/HorzFwdCMap ForwardCMap store
+		/HorzRevCMap ReverseCMap store
+	} { WMode 1 eq {
+		{ (Vertical writing\n) print } cmapDebug
+		/VertFwdCMap ForwardCMap store
+	} {
+		/WMode trap
+	} ifelse } ifelse
+	currentdict end
+} bind def
+
+currentdict end /CIDInit exch /ProcSet defineresource pop
+
+% dict copyfont dict'
+/copyfont {
+	dup length dict copy
+	dup /FID undef
+	dup /UniqueID undef
+	dup /subst_CID_on_WMode undef
+	begin
+	/XUID [ 1000000 XUID aload pop ] def
+	currentdict end
+} bind def
+
+% cidmap copyCIDMap -
+% currentdict is used as font.
+/copyCIDMap {
+	dup type /arraytype eq {
+		[ exch { dup length string copy } forall ]
+	} {
+		dup length string copy
+	} ifelse
+	/CIDMap exch def
+} bind def
+
+/cmapname /90ms-RKSJ-V def
+/CMap /Category findresource
+begin 1 dict begin
+/HorzFwdCMap null def
+/HorzRevCMap null def
+/VertFwdCMap null def
+cmapname 256 string ResourceFileName
+{ [ (getting filename for ) cmapname (: ) 4 index (\n) ] aprint } cmapDebug
+(r) file dup cvx exec
+closefile
+{
+	(Horizontal Forward CMap:\n) print
+	HorzFwdCMap {
+		exch aprint (->) print ==
+	} dictarrayforall
+	(Horizontal Reverse CMap:\n) print
+	HorzRevCMap {
+		exch aprint (->) print ==
+	} dictarrayforall
+	(Vertical Forward CMap:\n) print
+	VertFwdCMap {
+		exch aprint (->) print ==
+	} dictarrayforall
+} cmapVerbose
+
+/MS-Gothic /CIDFont findresource copyfont begin
+% CIDMap copyCIDMap
+CIDFontType 2 eq { /FontType 42 def } if
+
+VertFwdCMap {
+	% charcode cid
+	{
+		[ (char=) 3 index (, hcid=)] aprint
+		HorzFwdCMap 2 index getdictarray aprint
+		(, vcid=) print
+		VertFwdCMap 2 index getdictarray aprint
+		(, horz-revmap=) print
+		HorzRevCMap 1 index getdictarray aprint
+	} cmapDebug
+	HorzRevCMap 1 index getdictarray null eq {
+		CIDMap HorzFwdCMap 3 index getdictarray GDBytes mul
+		GDBytes getstrarray {
+			str2num
+			{ dup ( hgid=) print aprint } cmapDebug
+			pop
+		} {
+			{ ( hgid=none) print } cmapDebug
+		} ifelse
+		CIDMap VertFwdCMap 3 index getdictarray GDBytes mul
+		GDBytes getstrarray {
+			str2num
+			{ dup ( vgid=) print aprint } cmapDebug
+			pop
+		} {
+			{ ( vgid=none) print } cmapDebug
+		} ifelse
+	} if
+	{ (\n) print } cmapDebug
+	pop pop
+} dictarrayforall
+
+CIDFontName currentdict /CIDFont defineresource pop
+
+end end end
+
+/CIDInit /ProcSet undefineresource
+
+setglobal
