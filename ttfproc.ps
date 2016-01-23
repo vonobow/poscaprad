@@ -1,0 +1,505 @@
+%!
+
+/MaxFontsPerFile 1000 def
+/MaxTablesPerFonts 1000 def
+/MaxNamesPerFonts 1000 def
+/MaxStringBuffer 256 def
+/ttfprocDebug { exec } def
+/ttfprocVerbose { pop } def
+
+% name <loadexec> obj exec
+/loadexec {
+	load /exec cvx
+} bind def
+
+% <dict> <key> knownget ( <val> true ) | false
+% knownget has same functionality as .knownget in GS.
+/knownget {
+	2 copy known { get true } { pop pop false } ifelse
+} bind def
+
+% <default> <dict> <key> tinydefaultget <val>
+% return value for key in dict, if found.
+% return default if else.
+% order of parameter is different from defaultget in akamoz-util.ps
+/tinydefaultget {
+	knownget { exch pop } if
+} bind def
+
+% proc <protected-exec> -
+%	dictionary stack is poped, execute proc,
+%	then the dictionary stack is restored.
+%	exit will be trapped. if exit is executed in proc, exit is re-executed,
+%	and "exited" is set to true, false otherwise.
+/protected-exec {
+	1 {
+		/exited true def
+		[ /exec cvx currentdict ] cvx end exec
+		/exited false put
+	} [ /repeat cvx currentdict ] cvx exec begin
+	exited { exit } if
+} bind def
+
+% array proc <for-array> -
+%	procspec: array num <proc> -
+/for-array {
+	1 dict begin
+	/p exch def
+	/a exch def
+	0 1 a length 1 sub {
+		a exch /p load protected-exec
+	} for
+	end
+} bind def
+
+% str num <splitstring> substrtail substrhead
+/splitstring {
+	2 dict begin
+	/n exch def
+	/s exch def
+ 	s n s length n sub getinterval
+	s 0 n getinterval
+	end
+} bind def
+
+% str <charbytes> num
+/charbytesUTF8 {
+	0 get
+	dup 16#80 lt { 1 } {
+	dup 16#c2 lt { /charbytesUTF8 trap } {
+	dup 16#e0 lt { 2 } {
+	dup 16#f0 lt { 3 } {
+	dup 16#f8 lt { 4 } {
+		/charbytesUTF8 trap	% default
+	} ifelse } ifelse } ifelse } ifelse } ifelse
+	exch pop
+} bind def
+
+/charbytesUCS2 {
+	pop 2
+} bind def
+
+/charbytesUTF16BE {
+	0 get
+	dup 16#d8 lt { 2 } {
+	dup 16#dc lt { 4 } {
+	dup 16#e0 lt { /charbytesUTF16 trap } {
+		2	% default
+	} ifelse } ifelse } ifelse
+} bind def
+
+/charbytesUTF32 {
+	pop 4
+} bind def
+
+% num <checkUnicode> num
+/checkUnicode {
+	dup 16#d800 lt { } {
+	dup 16#e000 lt { /checkUnicode trap } {
+	dup 16#110000 lt { } {
+		/checkUnicode trap % default
+	} ifelse } ifelse } ifelse
+} bind def
+
+% str <decode> num
+
+/decodeUTF8Mask [ 16#ff 16#1f 16#0f 16#07 ] def
+/decodeUTF8Limit [ 0 16#80 16#800 16#10000 ] def
+
+% str <decodeUTF8> substrtail num
+/decodeUTF8 {
+	2 dict begin
+	/s exch def
+	s charbytesUTF8
+	s 1 index splitstring pop exch
+	1 sub /taillen exch def
+	s 0 get //decodeUTF8Mask taillen get and
+	s 1 taillen getinterval
+	{
+		dup 16#80 lt { /decodeUTF8b trap } if
+		dup 16#c0 ge { /decodeUTF8c trap } if
+		16#3f and exch 6 bitshift add
+	} forall
+	checkUnicode
+	dup //decodeUTF8Limit taillen get lt { /decodeutf8d trap } if
+	end
+} bind def
+
+currentdict /decodeUTF8Mask undef
+currentdict /decodeUTF8Limit undef
+
+% num <encodeUTF8> str
+/encodeUTF8 {
+	1 dict begin
+	/u exch def
+	u 16#80 lt {
+		1 string dup 0 u put
+	} {
+		u 16#800 lt { 2 16#c0 } {
+		u 16#10000 lt { 3 16#e0 } {
+		u 16#110000 lt { 4 16#f0 } {
+			/encodeUTF8 trap	% default
+		} ifelse } ifelse } ifelse
+		/msb exch def
+		dup string exch
+		1 sub -6 mul /bs exch def
+		dup {
+			u bs bitshift 16#3f and msb or put
+			/msb 16#80 def
+			/bs bs 6 add def
+		} for-array
+	} ifelse
+	end
+} bind def
+
+% str <_decodeUCS2> num
+/_decodeUCS2 {
+	dup 1 get exch 0 get 8 bitshift add
+} bind def
+
+% str <decodeUCS2> substrtail num
+/decodeUCS2 {
+	2 splitstring
+	_decodeUCS2
+	checkUnicode
+} bind def 
+
+% str num <_encodeUCS2> str
+/_encodeUCS2 {
+	1 index 0 2 index -8 bitshift put
+	1 index exch 1 exch 16#ff and put
+} bind def
+
+% num <encodeUCS2> str
+/encodeUCS2 {
+	checkUnicode
+	dup 16#10000 ge { /encodeUCS2 trap } if
+	2 string exch _encodeUCS2
+} bind def
+
+% str <decodeUTF16> substrtail num
+/decodeUTF16 {
+	2 splitstring _decodeUCS2
+	dup 16#dc00 ge 1 index 16#e000 lt and { /decodeUTF16a trap } if
+	dup 16#d800 ge 1 index 16#dc00 lt and {
+		exch 2 splitstring _decodeUCS2	% hi substr lo
+		dup 16#dc00 lt 1 index 16#e000 ge or { /decodeUTF16b trap } if
+		3 -1 roll	% substr lo hi
+		16#3ff and 10 bitshift exch 16#3ff and add 16#10000 add
+	} if
+	checkUnicode
+} bind def
+
+% num <encodeUTF16> str
+/encodeUTF16 {
+	checkUnicode
+	dup 16#10000 lt {
+		2 string exch _encodeUCS2
+	} {
+		16#10000 sub
+		4 string exch
+		dup 16#3ff and 16#dc00 add exch
+		-10 bitshift 16#d800 add
+		2 index 0 2 getinterval exch _encodeUCS2 pop
+		1 index 2 2 getinterval exch _encodeUCS2 pop
+	} ifelse
+} bind def
+
+% str <decodeUTF32> num
+/decodeUTF32 {
+	4 splitstring 0 exch {
+		exch 8 bitshift add
+	} forall
+	checkUnicode
+} bind def
+
+% num <encodeUTF32> num
+/encodeUTF32 {
+	checkUnicode
+	4 string exch 1 index {
+		3 exch sub
+		2 index 16#ff and put
+		-8 bitshift
+	} for-array
+	pop
+} bind def
+
+% arrayofstr <concatallstring> str
+/concatallstring {
+	dup 0 exch { length add } forall
+	string exch
+	0 exch {
+		dup length exch
+		3 index exch 3 index exch putinterval
+		add
+	} forall pop
+} bind def
+
+% str dec-encproc <convertstring> str'
+%	dec-encproc: str <dec-encproc> substrtail strchar
+/convertstring {
+	1 dict begin
+	/decenc exch def
+	[ exch {
+		dup length 0 eq { exit } if
+		/decenc load protected-exec exch
+	} loop pop ]
+	concatallstring
+	end
+} bind def
+
+% <obj> <proc> exec-forall -
+/exec-forall {
+	1 index type /arraytype eq {
+		forall
+	} {
+		1 exch repeat
+	} ifelse
+} bind def
+
+% file num <forward> -
+/forward {
+	1 index fileposition add setfileposition
+} bind def
+% str <str2num> num
+/str2num {
+	0 exch { exch 8 bitshift add } forall
+} bind def
+
+% array <aprint> -
+% anyother <aprint> -
+/aprint {
+	1 dict begin
+	/R 10 def
+	/W 0 def
+	/Fill ( ) def
+	{ 1 {
+		dup type /integertype eq {
+			R 32 string cvrs
+			dup length W exch sub
+			dup 0 gt { { Fill print } repeat } { pop } ifelse
+			print
+			exit
+		} if
+		dup type /dicttype eq { { def } forall exit } if
+		dup type /stringtype eq { print exit } if
+		dup type /nametype eq { dup length string cvs print exit } if
+		/aprint trap
+	} repeat } exec-forall
+	end
+} bind def
+
+% file num <bindfilebuffer> obj
+/bindfilebuffer {
+	[ 3 1 roll string /readstring cvx /not cvx ] cvx
+} bind def
+
+% file <ttfReadTTCHeader> file array
+/ttfReadTTCHeader {
+	1 dict begin
+	dup 4 bindfilebuffer /b4 exch def
+	dup fileposition
+	b4 { /ttfc0 trap } if
+	(ttcf) eq {
+		% TrueType Collection
+		{ (TrueType Collection: ) print } ttfprocDebug
+		pop
+		b4 { /ttfcver0 trap } if
+		str2num 16#00010000 lt { /ttcfver1 trap } if
+		b4 { /ttfcnumf0 trap } if
+		str2num dup MaxFontsPerFile gt { /ttfcnumf1 trap } if
+		{ (numfonts=) print dup aprint (\n) print } ttfprocDebug
+		array dup {
+			{ [ (  font ) 2 index (: ) ] aprint } ttfprocVerbose
+			b4 { /ttcfoff0 trap } if str2num
+			{ [ (offset=) 2 index (\n) ] aprint } ttfprocVerbose
+			put
+		} for-array
+	} {
+		% must be TrueType single font
+		[ 0 ]
+	} ifelse
+	end
+} bind def
+
+% num <ttfPrintVersion> -
+/ttfPrintVersion {
+	[
+		1 index -16 bitshift (.)
+		<< /R 16 /W 4 /Fill (0) >> 4 index 16#ffff and
+	] aprint
+	pop
+} bind def
+
+% file array subfontnum <ttfReadTrueTypeHeader> file ttfdict
+/ttfReadTrueTypeHeader {
+	2 copy get dup type /integertype ne {
+		3 1 roll pop pop
+	} {
+		% file array subfontnum offset
+		1 dict begin
+		/offset exch def
+		/subfontnum exch def
+		/a exch def
+		/f exch def
+		/ttftable 1 dict def
+		/b4 f 4 bindfilebuffer def
+		/b2 f 2 bindfilebuffer def
+		f offset setfileposition
+
+		{ [ (TrueType Offset Table: subfont=) subfontnum
+			( offset=) offset ] aprint } ttfprocDebug
+		b4 { /ttfhver0 trap } if
+		str2num { dup ( version=) print ttfPrintVersion } ttfprocDebug
+		16#00010000 ne { /ttfhver1 trap } if
+		b2 { /ttfnumtbl0 trap } if
+		str2num { [ ( numtables=) 2 index (\n) ] aprint } ttfprocDebug
+		dup MaxTablesPerFonts gt { /ttfnumtbl1 trap } if
+		f 6 forward
+		{	% << name [ off len ] ... >>
+			ttftable
+			b4 { /ttfhtblid trap } if
+			cvn { [ (  id=) 2 index ] aprint } ttfprocVerbose
+			f 4 forward
+			[
+				b4 { /ttfhtbloff trap } if
+				str2num
+				{ [ ( offset=) 2 index ] aprint } ttfprocVerbose
+				b4 { /ttfhtbllen trap } if
+				str2num
+				{ [ ( len=) 2 index (\n) ] aprint } ttfprocVerbose
+			] put
+		} repeat
+
+		a subfontnum ttftable put
+		ttftable begin
+		/Offset offset def
+		/SubFontID subfontnum def
+		end
+		f ttftable end
+	} ifelse
+} bind def
+
+% file ttfdict <ttfReadNameTable> file namedict
+/ttfReadNameTable {
+	1 dict begin
+	/ttf exch def
+	ttf /name get dup type /arraytype eq {
+		% file array
+		/f 2 index def
+		/b2 f 2 bindfilebuffer def
+		1 dict ttf /name 2 index put begin
+		aload pop
+		/Length exch def
+		/Offset exch def
+		currentdict	% file namedict
+		f 1 index /Offset get setfileposition
+		b2 { /ttfnamefmt trap } if
+		str2num
+		{ [ (name table: format=) 2 index ] aprint } ttfprocVerbose
+		dup 0 eq {
+			pop
+			b2 { /ttfnamecount trap } if
+			str2num /Count exch def
+			{ [ ( count=) Count ] aprint } ttfprocVerbose
+			Count MaxNamesPerFonts gt { /ttfnamecount0 trap } if
+			b2 { /ttfnamestroff trap } if
+			str2num Offset add /StringOffset exch def
+			{ [ ( offset=) StringOffset (\n) ] aprint } ttfprocVerbose
+			Count array /NameRecord exch def
+			NameRecord {
+				{ [ (  ) 2 index (: ) ] aprint } ttfprocVerbose
+				<<
+				/PlatformID b2 { /ttfnamepid trap } if str2num
+				{ [ (platform=) 2 index ] aprint } ttfprocVerbose
+				/EncodingID b2 { /ttfnameeid trap } if str2num
+				{ [ ( enc=) 2 index ] aprint } ttfprocVerbose
+				/LanguageID b2 { /ttfnamelid trap } if str2num
+				{ [ ( lang=) 2 index ] aprint } ttfprocVerbose
+				/NameID b2 { /ttfnamenid trap } if str2num
+				{ [ ( nameid=) 2 index ] aprint } ttfprocVerbose
+				/Length b2 { /ttfnamelen trap } if str2num
+				{ [ ( len=) 2 index ] aprint } ttfprocVerbose
+				/String b2 { /ttfnameoff trap } if str2num StringOffset add
+				{ [ ( off=) 2 index (\n) ] aprint } ttfprocVerbose
+				>> put
+			} for-array
+		} {
+			/ttfnamefmt0 trap
+		} ifelse
+		end
+	} if
+	end
+} bind def
+
+% decode table for platform ID 3
+/ttfNameDecodePF3 <<
+	1 { decodeUCS2 }
+	10 { decodeUCS4 }
+>> def
+
+% dict <ttfGetDecodeTable> ( decodeproc true | false )
+%	using PlatformID and EncodingID in dict.
+/ttfGetDecodeTable {
+	begin
+	1 {
+		PlatformID 3 eq {	% Windows
+			//ttfNameDecodePF3 EncodingID knownget exit
+		} if
+		false
+	} repeat
+	end
+} bind def
+
+% file namedict <ttfReadFontName> file str
+/ttfReadFontName {
+	1 dict begin
+	/f 2 index def
+	/got false def
+	/NameRecord get {
+		dup /NameID get 6 eq {
+			dup ttfGetDecodeTable { /got true def exit } if
+		} if
+		pop
+	} forall
+	got not { /ttfrdfn0 trap } if
+
+	/decproc exch def
+	begin
+	String dup type /integertype eq {
+		f exch setfileposition
+		f Length string readstring not { /ttfdfn1 trap } if
+		[ /decproc loadexec /encodeUTF8 loadexec ] cvx convertstring
+		dup /String exch def
+	} if
+	end
+	end
+} bind def
+
+% font <ttfFindFontTable> (file ttfdict true) | false
+/ttfFindFontTable {
+	[ null false null ]	% 0:ttfdict 1:bool 2:name
+	exch /FontName get	% array name
+	1 index 2 2 index put	% array name
+	/CIDFont /Category findresource begin
+	MaxStringBuffer string ResourceFileName
+	end
+	(r) file ttfReadTTCHeader	% array file ttfarray
+	{	% array	file ttfarray num
+		ttfReadTrueTypeHeader	% array file ttfdict
+		2 index 0 2 index put	% array file ttfdict
+		ttfReadNameTable	% array file namedict
+		ttfReadFontName	% array file str
+		2 index 2 get eq { 1 index 1 true put exit } if	% array file
+	} for-array
+	% array file
+	exch dup 1 get {
+		0 get true
+	} {
+		pop closefile false
+	} ifelse
+} bind def
+
+/MS-PGothic /CIDFont findresource ttfFindFontTable
+not { /ttf-notfound trap } if
+pop closefile
