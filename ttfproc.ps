@@ -52,6 +52,18 @@
 	end
 } bind def
 
+% array proc <for-array-reverse> -
+%	procspec: array num <proc> -
+/for-array-reverse {
+	1 dict begin
+	/p exch def
+	/a exch def
+	a length 1 sub -1 0 {
+		a exch /p load protected-exec
+	} for
+	end
+} bind def
+
 % str num <splitstring> substrtail substrhead
 /splitstring {
 	2 dict begin
@@ -266,12 +278,62 @@ currentdict /decodeUTF8Limit undef
 	0 exch { exch 8 bitshift add } forall
 } bind def
 
+/aprint-float-digits {
+	dup 0.1 mul 0.05 add floor exch % div val
+	1 index 10 mul sub round	% div mod
+	dup 0 lt { pop (0) } {
+	dup 9 gt { pop (9) } {
+		cvi 1 string cvs	% default
+	} ifelse } ifelse exch
+} bind def
+
+% num <aprint-float> -
+/aprint-float {
+	1 dict begin
+	/val exch def
+	F /fixed eq {
+		[
+			val 0 lt { (-) } if
+			/val val abs def
+			[
+				P 0 gt {
+					/e 10 P exp def
+					val e mul round
+					dup e div val ne {
+						pop
+						P { (0) } repeat
+						val
+					} {
+						P { aprint-float-digits } repeat
+					} ifelse
+					(.) exch
+				} {
+					val
+				} ifelse
+				{ aprint-float-digits dup 0 eq { exit } if } loop
+				pop
+			] { get } for-array-reverse 
+		] concatallstring
+		dup length W exch sub dup 0 gt {
+			{ ( ) print } repeat
+		} {
+			pop
+		} ifelse
+		print
+	} {
+		/aprint-float-format trap
+	} ifelse
+	end
+} bind def
+
 % array <aprint> -
 % anyother <aprint> -
 /aprint {
 	1 dict begin
 	/R 10 def
 	/W 0 def
+	/P 6 def
+	/F /fixed def
 	/Fill ( ) def
 	{ 1 {
 		dup type /integertype eq {
@@ -281,12 +343,21 @@ currentdict /decodeUTF8Limit undef
 			print
 			exit
 		} if
+		dup type /realtype eq {
+			aprint-float exit
+		} if
 		dup type /dicttype eq { { def } forall exit } if
 		dup type /stringtype eq { print exit } if
 		dup type /nametype eq { dup length string cvs print exit } if
 		/aprint trap
 	} repeat } exec-forall
 	end
+} bind def
+
+/dstack {
+	(--- ) print aprint ( ---\n) print
+	pstack
+	(---------\n) print flush
 } bind def
 
 % file num <bindfilebuffer> obj
@@ -331,14 +402,16 @@ currentdict /decodeUTF8Limit undef
 	pop
 } bind def
 
-% file array subfontnum <ttfReadTrueTypeHeader> file ttfdict
+% file array subfontnum <ttfReadTrueTypeHeader> ttfdict
 /ttfReadTrueTypeHeader {
-	2 copy get dup type /integertype ne {
-		3 1 roll pop pop
+	3 array astore
+	dup 1 get 1 index 2 get get dup type /integertype ne {
+		exch pop
 	} {
-		% file array subfontnum offset
+		% [ file array subfontnum ] offset
 		1 dict begin
 		/offset exch def
+		aload pop
 		/subfontnum exch def
 		/a exch def
 		/f exch def
@@ -373,39 +446,40 @@ currentdict /decodeUTF8Limit undef
 
 		a subfontnum ttftable put
 		ttftable begin
+		/File f def
 		/Offset offset def
 		/SubFontID subfontnum def
 		end
-		f ttftable end
+		ttftable end
 	} ifelse
 } bind def
 
-% file ttfdict <ttfReadNameTable> file namedict
+% ttfdict <ttfReadNameTable> ttfdict namedict
 /ttfReadNameTable {
 	1 dict begin
-	/ttf exch def
+	/ttf 1 index def
 	ttf /name get dup type /arraytype eq {
-		% file array
-		/f 2 index def
+		/f ttf /File get def
 		/b2 f 2 bindfilebuffer def
-		1 dict ttf /name 2 index put begin
+		1 dict begin
+		ttf /name currentdict put 
 		aload pop
 		/Length exch def
 		/Offset exch def
-		currentdict	% file namedict
-		f 1 index /Offset get setfileposition
+		f Offset setfileposition
 		b2 { /ttfnamefmt trap } if
 		str2num
-		{ [ (name table: format=) 2 index ] aprint } ttfprocVerbose
+		{ [ (name: offset=) Offset ] aprint } ttfprocDebug
+		{ [ ( format=) 2 index ] aprint } ttfprocDebug
 		dup 0 eq {
 			pop
 			b2 { /ttfnamecount trap } if
 			str2num /Count exch def
-			{ [ ( count=) Count ] aprint } ttfprocVerbose
+			{ [ ( count=) Count ] aprint } ttfprocDebug
 			Count MaxNamesPerFonts gt { /ttfnamecount0 trap } if
 			b2 { /ttfnamestroff trap } if
 			str2num Offset add /StringOffset exch def
-			{ [ ( offset=) StringOffset (\n) ] aprint } ttfprocVerbose
+			{ [ ( stroff=) StringOffset (\n) ] aprint } ttfprocDebug
 			Count array /NameRecord exch def
 			NameRecord {
 				{ [ (  ) 2 index (: ) ] aprint } ttfprocVerbose
@@ -427,7 +501,7 @@ currentdict /decodeUTF8Limit undef
 		} {
 			/ttfnamefmt0 trap
 		} ifelse
-		end
+		currentdict end
 	} if
 	end
 } bind def
@@ -451,11 +525,13 @@ currentdict /decodeUTF8Limit undef
 	end
 } bind def
 
-% file namedict <ttfReadFontName> file str
+% ttfdict <ttfReadFontName> ttfdict str
 /ttfReadFontName {
 	1 dict begin
-	/f 2 index def
+	/f 1 index /File get def
 	/got false def
+
+	ttfReadNameTable	% ttfdict namedict
 	/NameRecord get {
 		dup /NameID get 6 eq {
 			dup ttfGetDecodeTable { /got true def exit } if
@@ -463,8 +539,8 @@ currentdict /decodeUTF8Limit undef
 		pop
 	} forall
 	got not { /ttfrdfn0 trap } if
-
 	/decproc exch def
+
 	begin
 	String dup type /integertype eq {
 		f exch setfileposition
@@ -476,30 +552,168 @@ currentdict /decodeUTF8Limit undef
 	end
 } bind def
 
-% font <ttfFindFontTable> (file ttfdict true) | false
+% font <ttfFindFontTable> (ttfdict true) | false
 /ttfFindFontTable {
-	[ null false null ]	% 0:ttfdict 1:bool 2:name
-	exch /FontName get	% array name
-	1 index 2 2 index put	% array name
+	1 dict begin
+	/FontName get /FontName exch def
+	/got false def
 	/CIDFont /Category findresource begin
-	MaxStringBuffer string ResourceFileName
+	FontName MaxStringBuffer string ResourceFileName
 	end
-	(r) file ttfReadTTCHeader	% array file ttfarray
-	{	% array	file ttfarray num
-		ttfReadTrueTypeHeader	% array file ttfdict
-		2 index 0 2 index put	% array file ttfdict
-		ttfReadNameTable	% array file namedict
-		ttfReadFontName	% array file str
-		2 index 2 get eq { 1 index 1 true put exit } if	% array file
-	} for-array
-	% array file
-	exch dup 1 get {
-		0 get true
+	(r) file /File exch def
+	File ttfReadTTCHeader {	% file array subfontid
+		ttfReadTrueTypeHeader	% ttfdict
+		ttfReadFontName	% ttfdict str
+		FontName eq { /got true def exit } if	% ttfdict
+		pop File	% file
+	} for-array	% ttfdict | file
+	got { true } { closefile false } ifelse
+	end
+} bind def
+
+% ttfdict <ttfRead-head> ttfdict
+% 	head table specific informations are stored in head dict.
+%	global informations are stored in ttfdict directly.
+/ttfReadHeadTable {
+	/ttf 1 index def
+	ttf /head get dup type /arraytype eq {
+		1 dict begin
+			/f ttf /File get def
+			/b2 f 2 bindfilebuffer def
+			/b4 f 4 bindfilebuffer def
+			1 dict begin
+				ttf /head currentdict put
+				aload pop
+				/Length exch def
+				/Offset exch def
+				f Offset setfileposition
+				b4 { /ttfhead-ver0 trap } if str2num
+				{ [ (head: offset=) Offset ( ver=) ] aprint } ttfprocDebug
+				{ dup ttfPrintVersion } ttfprocDebug
+				dup 16#00010000 lt { /ttfhead-ver1 trap } if
+				/Version exch def
+			end
+			ttf begin
+				f 14 forward
+				b2 { /ttfhead-em trap } if str2num
+				/FUnit exch def
+				{ [ ( funit=) FUnit (\n) ] aprint } ttfprocDebug
+			end
+		end
 	} {
-		pop closefile false
+		pop
 	} ifelse
+} bind def
+
+% ttfdict <ttfReadMaxpTable> ttfdict
+% 	maxp table specific informations are stored in maxp dict.
+%	global informations are stored in ttfdict directly.
+/ttfReadMaxpTable {
+	/ttf 1 index def
+	ttf /maxp get dup type /arraytype eq {
+		1 dict begin
+			/f ttf /File get def
+			/b2 f 2 bindfilebuffer def
+			/b4 f 4 bindfilebuffer def
+			1 dict begin
+				ttf /maxp currentdict put
+				aload pop
+				/Length exch def
+				/Offset exch def
+				f Offset setfileposition
+				b4 { /ttfmaxp-ver0 trap } if str2num
+				{ [ (maxp: offset=) Offset ( ver=) ] aprint } ttfprocDebug
+				{ dup ttfPrintVersion } ttfprocDebug
+				dup 16#00005000 lt { /ttfmaxp-ver1 trap } if
+				/Version exch def
+			end
+			ttf begin
+				b2 { /ttfmaxp-ng trap } if
+				str2num /NumGlyphs exch def
+				{ [ ( numglyphs=) NumGlyphs (\n) ] aprint } ttfprocDebug
+			end
+		end
+	} {
+		pop
+	} ifelse
+} bind def
+
+% ttfdict <ttfReadHheaTable> ttfdict hheadict
+/ttfReadHheaTable {
+	/ttf 1 index def
+	ttf /hhea get dup type /arraytype eq {
+		1 dict begin
+			/f ttf /File get def
+			/b2 f 2 bindfilebuffer def
+			/b4 f 4 bindfilebuffer def
+			1 dict begin
+				ttf /hhea currentdict put
+				aload pop
+				/Length exch def
+				/Offset exch def
+				f Offset setfileposition
+				b4 { /ttfhhea-ver0 trap } if str2num
+				{ [ (hhea: offset=) Offset ( ver=) ] aprint } ttfprocDebug
+				{ dup ttfPrintVersion } ttfprocDebug
+				dup 16#00010000 lt { /ttfhhea-ver1 trap } if
+				/Version exch def
+				f 28 forward
+				b2 { /ttfhhea-format trap } if
+				str2num /MetricDataFormat exch def
+				{ [ ( format=) MetricDataFormat ] aprint } ttfprocDebug
+				b2 { /ttfhhea-numhmtx trap } if
+				str2num /NumberOfHMetrics exch def
+				{ [ ( numhmtx=) NumberOfHMetrics (\n) ] aprint } ttfprocDebug
+			currentdict end
+		end
+	} if
+} bind def
+
+% ttfdict <ttfReadHmtxTable> ttfdict hmtxdict
+%	metrics values are normalized.
+/ttfReadHmtxTable {
+	/ttf 1 index def
+	ttf /hmtx get dup type /arraytype eq {
+		1 dict begin
+			/f ttf /File get def
+			/b2 f 2 bindfilebuffer def
+			exch ttfReadHeadTable
+			ttf /FUnit get /fu exch def
+			ttfReadMaxpTable
+			ttf /NumGlyphs get /n exch def
+			ttfReadHheaTable
+			dup /MetricDataFormat get 0 ne { /hmtx-format trap } if
+			/NumberOfHMetrics get /m exch def
+			exch
+			1 dict begin
+				ttf /hmtx currentdict put
+				aload pop
+				/Length exch def
+				/Offset exch def
+				/AdvanceWidth m array def
+				f Offset setfileposition
+				AdvanceWidth {
+					b2 { /ttfhmtx-hmw } if
+					str2num fu div [ 1 index ( ) ] aprint put
+					b2 { /ttfhmtx-lsb } if pop
+				} for-array
+			currentdict end
+		end
+	} if
+} bind def
+
+% ttfdict <ttfCloseFontFile> -
+/ttfCloseFontFile {
+	begin
+	/File type /filetype eq {
+		File closefile
+		/File null def
+	} if
+	end
 } bind def
 
 /MS-PGothic /CIDFont findresource ttfFindFontTable
 not { /ttf-notfound trap } if
-pop closefile
+ttfReadHmtxTable
+pop
+ttfCloseFontFile
