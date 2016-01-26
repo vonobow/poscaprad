@@ -4,7 +4,27 @@ currentglobal
 false setglobal
 
 /cmapDebug { exec } def
-/cmapVerbose { pop } def
+/cmapVerbose { exec } def
+
+% proc <protected-exec> -
+%	dictionary stack is poped, execute proc,
+%	then the dictionary stack is restored.
+%	exit will be trapped. if exit is executed in proc, exit is re-executed,
+%	and "exited" is set to true, false otherwise.
+/protected-exec {
+	1 {
+		/exited true def
+		[ /exec cvx currentdict ] cvx end exec
+		/exited false put
+	} [ /repeat cvx currentdict ] cvx exec begin
+	exited { exit } if
+} bind def
+
+/dstack {
+	(--- ) print aprint ( ---\n) print
+	pstack
+	(---------\n) print flush
+} bind def
 
 % <obj> <proc> exec-forall -
 /exec-forall {
@@ -130,18 +150,37 @@ false setglobal
 	end
 } def
 
+/CMapList 1 dict def
+
 1 dict begin
 
 /begincmap {
 	{ (begincmap\n) aprint } cmapDebug
+	/CodeMap 5 dict def
+	CodeMap begin
 	/ForwardCMap 10 initdictarray def
 	/ReverseCMap 8 initdictarray def
+	/BaseCMaps [ ] def
+	end
 } bind def
 
 /usecmap {
-	256 string ResourceFileName
-	{ [ (usecmap: ) 2 index (\n) ] aprint } cmapDebug
-	(r) file dup cvx exec closefile
+	1 dict begin
+		/BaseCMapName exch def
+		{ [ (usecmap: ) BaseCMapName (\n) ] aprint } cmapDebug
+		/CMap /Category findresource begin
+			BaseCMapName 256 string ResourceFileName
+		end
+		{ [ (Filename: ) 2 index (\n) ] aprint } cmapVerbose
+		(r) file /File exch def
+		File cvx protected-exec
+		File closefile
+		CodeMap begin
+			BaseCMaps aload length 1 add array
+			//CMapList BaseCMapName get
+			exch astore /BaseCMaps exch def
+		end
+	end
 } bind def
 
 /begincodespacerange {
@@ -172,6 +211,7 @@ false setglobal
 /endcidchar {
 	{ (endcidchar\n) aprint } cmapDebug
 	cleartomark pop
+	/endcidchar trap
 } bind def
 
 /begincidrange {
@@ -192,6 +232,7 @@ false setglobal
 } bind def
 
 /endcidrange {
+	CodeMap begin
 	{ (endcidrange\n) aprint } cmapDebug
 	] 1 index 3 mul 1 index length ne { /endcidrange trap } if
 	exch {
@@ -205,27 +246,18 @@ false setglobal
 		pop pop
 	} repeat-count
 	pop
+	end
 } bind def
 
 /endcmap {
 	{ (endcmap\n) aprint } cmapDebug
 } bind def
 
+% key inst cat <defineresource> inst
 /defineresource {
 	{ (defineresource\n) aprint } cmapDebug
-	pop begin pop
-	{ [ (end of CMap ) CMapName (\n) ] aprint } cmapDebug
-	WMode 0 eq {
-		{ (Horizontal writing\n) print } cmapDebug
-		/HorzFwdCMap ForwardCMap store
-		/HorzRevCMap ReverseCMap store
-	} { WMode 1 eq {
-		{ (Vertical writing\n) print } cmapDebug
-		/VertFwdCMap ForwardCMap store
-	} {
-		/WMode trap
-	} ifelse } ifelse
-	currentdict end
+	/CMap ne { /defrsc0 trap } if
+	exch //CMapList exch 2 index put
 } bind def
 
 currentdict end /CIDInit exch /ProcSet defineresource pop
@@ -254,14 +286,18 @@ currentdict end /CIDInit exch /ProcSet defineresource pop
 
 /cmapname /90ms-RKSJ-V def
 /CMap /Category findresource
-begin 1 dict begin
-/HorzFwdCMap null def
-/HorzRevCMap null def
-/VertFwdCMap null def
-cmapname 256 string ResourceFileName
+begin cmapname 256 string ResourceFileName end
 { [ (getting filename for ) cmapname (: ) 4 index (\n) ] aprint } cmapDebug
-(r) file dup cvx exec
-closefile
+(r) file dup cvx exec closefile
+
+currentdict
+CMapList cmapname get /CodeMap get begin
+dup /VertFwdCMap ForwardCMap put
+BaseCMaps 0 get /CodeMap get begin
+dup /HorzFwdCMap ForwardCMap put
+/HorzRevCMap ReverseCMap put
+end end
+
 {
 	(Horizontal Forward CMap:\n) print
 	HorzFwdCMap {
@@ -315,8 +351,8 @@ VertFwdCMap {
 
 CIDFontName currentdict /CIDFont defineresource pop
 
-end end end
+end
 
-/CIDInit /ProcSet undefineresource
+% /CIDInit /ProcSet undefineresource
 
 setglobal
