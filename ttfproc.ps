@@ -11,6 +11,9 @@
 /aprintVerbose { ttfprocVerbose { aprint } ttfprocVerbose } def
 /aprintMoreVerbose { ttfprocMoreVerbose { aprint } ttfprocMoreVerbose } def
 
+% value object key [ vokput ] -
+/vokput { 2 index put pop } bind def
+
 % name <loadexec> obj exec
 /loadexec {
 	load /exec cvx
@@ -65,6 +68,66 @@
 	a length 1 sub -1 0 {
 		a exch /p load protected-exec
 	} for
+	end
+} bind def
+
+% - [ strbufCreate ] strbuf
+/strbufCreate {
+	<< /buf () /pos 0 >>
+} def
+
+% strbuf <strbufLength> int
+/strbufLength {
+	/pos get
+} bind def
+
+% strbuf len [ strbufRealloc ] -
+/strbufRealloc {
+	2 dict begin
+	/len exch def
+	/strbuf exch def
+	strbuf /buf get length
+	dup len lt {
+		2 mul
+		dup len lt { pop len } if
+		{ (realloc to ) print dup == } pop
+		string dup 0 strbuf /buf get putinterval strbuf /buf vokput
+	} {
+		pop
+	} ifelse
+	end
+} bind def
+
+% strbuf str [ strbufAppend ] -
+/strbufAppend {
+	1 index begin
+	3 dict begin
+	/str exch def
+	/strbuf exch def
+	/newlen pos str length add def
+	strbuf newlen strbufRealloc
+	buf pos str putinterval
+	strbuf /pos newlen put
+	end end
+} bind def
+
+% strbuf int [ strbufAppendInt ] -
+/strbufAppendInt {
+	1 index begin
+	3 dict begin
+	/n exch def
+	/strbuf exch def
+	/newlen pos 1 add def
+	strbuf newlen strbufRealloc
+	buf pos n put
+	strbuf /pos newlen put
+	end end
+} bind def
+
+% strbuf [ strbufGetString ] string
+/strbufGetString {
+	begin
+	buf 0 pos getinterval
 	end
 } bind def
 
@@ -291,63 +354,116 @@ currentdict /decodeUTF8Limit undef
 	} ifelse } ifelse exch
 } bind def
 
-% num <aprint-float> -
-/aprint-float {
+/aprint-longval-divmod10 {
 	1 dict begin
-	/val exch def
-	F /fixed eq {
-		[
-			val 0 lt { (-) } if
-			/val val abs def
-			[
-				P 0 gt {
-					val 1e20 gt {
-						P { (0) } repeat
-						val
-					} {
-						val 10 P exp mul round
-						P { aprint-float-digits } repeat
-					} ifelse
-					(.) exch
-				} {
-					val
-				} ifelse
-				{ aprint-float-digits dup 0 eq { exit } if } loop
-				pop
-			] { get } for-array-reverse 
-		] concatallstring
-		dup length W exch sub dup 0 gt {
-			{ ( ) print } repeat
-		} {
-			pop
-		} ifelse
-		print
-	} {
-		/aprint-float-format trap
-	} ifelse
+	/m 0 def
+	/f true def
+	[ exch {
+		m 256 mul add dup 10 idiv exch
+		10 mod /m exch def
+		dup 0 eq f and { pop } if
+		/f false def
+	} forall ]
+	m
 	end
+} bind def
+
+% val width <aprint-float-fixed> str
+/aprint-float-fixed {
+	1 dict begin
+	/prec exch def
+	/val exch def
+	/str strbufCreate def
+	/s 1 string def
+
+	% 符号
+	val 0 lt {
+		str (-) strbufAppend
+		/val val abs def
+	} if
+
+	% 丸めておく
+	/val val 10 prec neg exp 0.5 mul add def
+
+	% 整数部と小数部に分ける
+	/ipart val floor def
+	/fpart val ipart sub def
+
+	% 整数部を256進表現にする。
+	/n 0 def
+	{
+		ipart 1 lt { exit } if
+		/ipart ipart 256 div def
+		/n n 8 add def
+		n 5000 gt { /aprint-float-overflow trap } if
+	} loop
+	/ipart [ ipart n 8 idiv {
+		256 mul dup floor cvi exch 1 index sub
+	} repeat pop ] def
+
+	% 下位桁から10進分解する。
+	mark {
+		ipart length 0 eq { exit } if
+		ipart aprint-longval-divmod10 exch /ipart exch def
+	} loop
+
+	% 文字列に直す
+	{
+		dup mark eq { exit } if
+		s cvs str exch strbufAppend
+	} loop
+	pop
+
+	% 空っぽなら0を追加
+	str strbufLength 0 eq { str (0) strbufAppend } if
+
+	% 小数部
+	str (.) strbufAppend
+	fpart prec {
+		10 mul dup floor dup cvi s cvs
+		str exch strbufAppend
+		sub
+	} repeat pop
+
+	str strbufGetString
+	end
+} bind def
+
+% str aprint-align -
+%	use W A F to formatting
+/aprint-align {
+	dup length	% str len
+	W exch sub	% str W-len
+	dup 0 le {
+		pop print
+	} { A /right eq {
+		{ ( ) print } repeat print
+	} { A /left eq {
+		exch print { ( ) print } repeat
+	} { A type /stringtype eq {
+		1 index 0 1 getinterval (-) eq {
+			(-) print { A print } repeat
+			1 1 index length 1 sub getinterval print
+		} {
+			{ A print } repeat print
+		} ifelse
+	} {
+		/aprint-align trap
+	} ifelse } ifelse } ifelse } ifelse
 } bind def
 
 % array <aprint> -
 % anyother <aprint> -
 /aprint {
 	1 dict begin
-	/R 10 def
-	/W 0 def
-	/P 6 def
-	/F /fixed def
-	/Fill ( ) def
+	/W 0 def	% field width
+	/P 6 def	% precision
+	/A /right def	% align: /right, /left or string to fill
+	/F /fixed def	% floating point format
+	/R 10 def	% radix
 	{ 1 {
-		dup type /integertype eq {
-			R 32 string cvrs
-			dup length W exch sub
-			dup 0 gt { { Fill print } repeat } { pop } ifelse
-			print
-			exit
-		} if
-		dup type /realtype eq {
-			aprint-float exit
-		} if
+		dup type /integertype eq { R 32 string cvrs aprint-align exit } if
+		dup type /realtype eq { P aprint-float-fixed aprint-align exit } if
 		dup type /dicttype eq { { def } forall exit } if
 		dup type /stringtype eq { print exit } if
 		dup type /nametype eq { dup length string cvs print exit } if
@@ -402,7 +518,7 @@ currentdict /decodeUTF8Limit undef
 /ttfPrintVersion {
 	[
 		1 index -16 bitshift (.)
-		<< /R 16 /W 4 /Fill (0) >> 4 index 16#ffff and
+		<< /R 16 /W 4 /A (0) >> 4 index 16#ffff and
 	] aprint
 	pop
 } bind def
