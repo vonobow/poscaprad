@@ -429,18 +429,17 @@ currentdict /decodeUTF8Limit undef
 	end
 } bind def
 
-% str aprint-align -
-%	use W A F to formatting
+% str align width aprint-align -
 /aprint-align {
-	dup length	% str len
-	W exch sub	% str W-len
+	2 index length	% str align width len
+	sub	% str align width-len
 	dup 0 le {
-		pop print
-	} { A /right eq {
-		{ ( ) print } repeat print
-	} { A /left eq {
-		exch print { ( ) print } repeat
-	} { A type /stringtype eq {
+		pop pop print
+	} { exch dup /right eq {	% str width-len align
+		pop { ( ) print } repeat print
+	} { dup /left eq {
+		pop exch print { ( ) print } repeat
+	} { type /stringtype eq {
 		1 index 0 1 getinterval (-) eq {
 			(-) print { A print } repeat
 			1 1 index length 1 sub getinterval print
@@ -462,11 +461,11 @@ currentdict /decodeUTF8Limit undef
 	/F /fixed def	% floating point format
 	/R 10 def	% radix
 	{ 1 {
-		dup type /integertype eq { R 32 string cvrs aprint-align exit } if
-		dup type /realtype eq { P aprint-float-fixed aprint-align exit } if
+		dup type /integertype eq { R 32 string cvrs A W aprint-align exit } if
+		dup type /realtype eq { P aprint-float-fixed A W aprint-align exit } if
 		dup type /dicttype eq { { def } forall exit } if
-		dup type /stringtype eq { print exit } if
-		dup type /nametype eq { dup length string cvs print exit } if
+		dup type /nametype eq { dup length string cvs } if % fall through
+		dup type /stringtype eq { A W aprint-align exit } if
 		dup type /booleantype eq {
 			{ (true) } { (false) } ifelse print exit
 		} if
@@ -1235,7 +1234,7 @@ currentdict /decodeUTF8Limit undef
 %		Coverage: coverage table dict. key=gid, value=covidx
 %		destination gid is:
 %		SubstFormat 1:
-%			lookup Coverage by gid in qurey, add DeltaGlyphID to the result.
+%			lookup Coverage by gid in qurey, add DeltaGlyphID to the original.
 %		SubstFormat 2:
 %			lookup Coverage by gid in query, lookup Substitute by the result.
 /ttfReadGSUBLookupSubTable {
@@ -1263,7 +1262,7 @@ currentdict /decodeUTF8Limit undef
 						[ ( cov=) Coverage ] aprintDebug
 						b2 { /ttfgsublutsub1-delta trap } if
 						str2num /DeltaGlyphID exch def
-						[ ( delta=) DeltaGlyphID ] aprintDebug
+						[ ( delta=) DeltaGlyphID (\n) ] aprintDebug
 					} { SubstFormat 2 eq {
 						b2 { /ttfgsublutsub1-cov trap } if
 						str2num Offset add /Coverage exch def
@@ -1287,6 +1286,31 @@ currentdict /decodeUTF8Limit undef
 							/ttfgsublutsub-covcnt trap
 						} if
 					} if
+
+					% bind parameter to Lookup procedure
+					SubstFormat 1 eq {
+						/Lookup [
+							DeltaGlyphID Coverage {
+								2 index known {
+									add 16#ffff and true
+								} {
+									pop false
+								} ifelse
+							} /exec cvx
+						] cvx bind def
+					} { SubstFormat 2 eq {
+						/Lookup [
+							Substitute Coverage {
+								dup 3 index known {
+									2 index get get exch pop true
+								} {
+									pop pop false
+								} ifelse
+							} /exec cvx
+						] cvx bind def
+					} {
+						/ttfgsublutsub-subfmt2 trap
+					} ifelse } ifelse
 				currentdict end
 			} {
 				3 -2 roll pop pop
@@ -1339,15 +1363,43 @@ currentdict /decodeUTF8Limit undef
 	} ifelse
 } bind def
 
+% source dest id
+/gatherLUT {
+	/id exch def
+	/dest exch def
+	begin
+	1 dict begin
+	Coverage {
+		pop dup Lookup {
+			/dstgid exch def
+			/srcgid exch def
+			dest srcgid known not {
+				dest srcgid [ ] put
+			} if
+			dest srcgid get aload [ id dstgid ] exch
+			length 1 add array astore
+			dest exch srcgid exch put
+		} { pop pop } ifelse
+	} forall
+	end end
+} bind def
+
 [ /MS-PGothic /IPAexMincho /DFPKaiSho-Md ] {
 	(-----------------------------------------------------------------\n) print
 	/CIDFont findresource ttfFindFontTable
 	not { /ttf-notfound trap } if
 	ttfReadHmtxTable pop
 	dup /vmtx known { ttfReadVmtxTable pop } if
+	/dest 1 dict def
 	/kana (JAN ) /vert ttfGetGSUBTable {
-		== % array of dict
+		{ dest /kana gatherLUT } forall
 	} if
+	/hani (JAN ) /vert ttfGetGSUBTable {
+		{ dest /hani gatherLUT } forall
+	} if
+	dest {
+		exch aprint ( ) aprint ==
+	} forall
 	ttfCloseFontFile
 } forall
 quit
