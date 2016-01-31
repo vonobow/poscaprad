@@ -1235,7 +1235,13 @@ currentdict end
 % CMap Utilityes
 %---------------------------------------------------------------------
 
-1 dict begin
+% - <ttfDefineCIDInitProcSet> procsetdict
+/ttfDefineCIDInitProcSet {
+
+currentglobal
+false setglobal
+
+1 dict begin	% CIDInitProcSet
 
 /CMapList 1 dict def
 
@@ -1249,8 +1255,9 @@ currentdict end
 	end
 } bind def
 
-/usecmap {
+/usecmap [ CMapList {
 	1 dict begin
+		/cmaplist exch def
 		/BaseCMapName exch def
 		[ (usecmap: cmapname=) BaseCMapName ] aprintDebug
 		/CMap /Category findresource begin
@@ -1262,11 +1269,11 @@ currentdict end
 		File closefile
 		CodeMap begin
 			BaseCMaps aload length 1 add array
-			//CMapList BaseCMapName get
+			cmaplist BaseCMapName get
 			exch astore /BaseCMaps exch def
 		end
 	end
-} bind def
+} /exec cvx ] cvx bind def
 
 /begincodespacerange {
 	(begincodespacerange\n) aprintVerbose
@@ -1359,19 +1366,81 @@ currentdict end
 } bind def
 
 % key inst cat <defineresource> inst
-/defineresource {
-	[ (defineresource: cat=) 2 index ( name=) 6 index (\n) ] aprintDebug
-	/CMap ne { /defrsc0 trap } if
-	exch //CMapList exch 2 index put
+/defineresource [ CMapList {
+	[ (defineresource: cat=) 3 index ( name=) 7 index (\n) ] aprintDebug
+	exch /CMap ne { /defrsc0 trap } if
+	3 -1 roll 2 index put
+} /exec cvx ] cvx bind def
+
+currentdict end	% CIDInitProcSet
+/CIDInit exch /ProcSet defineresource
+
+exch setglobal
+
+} bind def	% ttfDefineCIDInitProcSet
+
+/ttfUndefineCIDInitProcSet {
+	currentglobal
+	false setglobal
+	/CIDInit /ProcSet undefineresource
+	setglobal
 } bind def
 
-currentdict end /CIDInit exch /ProcSet defineresource pop
+% dict copyfont dict'
+/copyfont {
+	dup length dict copy
+	dup /FID undef
+	dup /UIDBase undef
+	dup /UniqueID undef
+	begin
+	/XUID [ 1000000 XUID aload pop ] def
+	currentdict end
+} bind def
 
-/cmapname /90ms-RKSJ-V def
-/CMap /Category findresource
-begin cmapname 256 string ResourceFileName end
-[ (getting filename for ) cmapname (: ) 4 index (\n) ] aprintDebug
-(r) file dup cvx exec closefile
+% font cmap <ttfVerticalFixupInfo> font'
+/ttfVerticalFixupInfo {
+	1 dict begin
+
+	dup type /dicttype eq { /CMapName get } if
+	/cmapname exch def
+	/CMap /Category findresource
+	begin cmapname 256 string ResourceFileName end
+	[ (getting filename for ) cmapname (: ) 4 index (\n) ] aprintDebug
+	(r) file dup cvx
+	/cmaplist ttfDefineCIDInitProcSet /CMapList get def
+	exec closefile
+
+	(--- Forward CMAP ---\n) print
+	cmaplist cmapname get /CodeMap get /ForwardCMap get {
+		[ << /S /hex >> 3 index ] aprint
+		[ ( ) 2 index (\n) ] aprint
+		pop pop
+	} forall
+
+	(--- Reverse CMAP ---\n) print
+	cmaplist cmapname get /CodeMap get /ReverseCMap get {
+		[ << /W 5 >> 3 index ] aprint
+		[ ( ) << /S /hex >> 3 index ] aprint
+		(\n) print
+		pop pop
+	} forall
+
+	(--- Base CMAP ---\n) print
+	cmaplist cmapname get /CodeMap get /BaseCMaps get 0 get
+	/CodeMap get /ForwardCMap get {
+		[ << /S /hex /W 6 /A /left >> 3 index ] aprint
+		[ << /W 6 >> 2 index (\n) ] aprint
+		pop pop
+	} forall
+
+	ttfUndefineCIDInitProcSet
+
+	pop
+
+	end
+} bind def
+
+/hoge /90ms-RKSJ-V ttfVerticalFixupInfo
 quit
 
 [ /MS-PGothic /IPAexMincho /DFPKaiSho-Md ] {
