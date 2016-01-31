@@ -1,7 +1,7 @@
 %!
 
 /ttfprocDebug { exec } def
-/ttfprocVerbose { pop } def
+/ttfprocVerbose { exec } def
 /ttfprocMoreVerbose { pop } def
 /aprintDebug { ttfprocDebug { aprint flush } ttfprocDebug } def
 /aprintVerbose { ttfprocVerbose { aprint flush } ttfprocVerbose } def
@@ -67,9 +67,48 @@
 	end
 } bind def
 
+% array proc <for-array-rev> -
+%	procspec: array num <proc> -
+/for-array-rev {
+	1 dict begin
+	/p exch def
+	/a exch def
+	a length 1 sub -1 0 {
+		a exch /p load protected-exec
+	} for
+	end
+} bind def
+
 % num proc <repeat-count> -
 /repeat-count {
 	exch 1 sub exch 0 1 4 2 roll for
+} bind def
+
+% str <str2num> num
+/str2num {
+	0 exch { exch 8 bitshift add } forall
+} bind def
+
+% num str <num2str> str
+/num2str {
+	1 dict begin
+	/s exch def
+	s {
+		2 index 255 and put
+		-8 bitshift
+	} for-array-rev
+	pop s end
+} bind def
+
+% arrayofstr <concatallstring> str
+/concatallstring {
+	dup 0 exch { length add } forall
+	string exch
+	0 exch {
+		dup length exch
+		3 index exch 3 index exch putinterval
+		add
+	} forall pop
 } bind def
 
 % - [ strbufCreate ] strbuf
@@ -127,6 +166,11 @@
  	s n s length n sub getinterval
 	s 0 n getinterval
 	end
+} bind def
+
+% file num <forward> -
+/forward {
+	1 index fileposition add setfileposition
 } bind def
 
 /aprint-float-digits {
@@ -235,6 +279,22 @@
 	} ifelse } ifelse } ifelse } ifelse
 } def
 
+% str <aprint-format-string> str'
+/aprint-format-string {
+	S /char eq {
+		% do nothing.
+	} { S /hex eq {
+		[ (<)
+		2 index {
+			16 2 string cvrs
+			dup length 2 lt { (0) exch } if
+		} forall
+		(>) ] concatallstring exch pop
+	} {
+		/aprint-format-string trap
+	} ifelse } ifelse
+} bind def
+
 % array <aprint> -
 % anyother <aprint> -
 /aprint {
@@ -243,13 +303,16 @@
 	/P 6 def	% precision
 	/A /right def	% align: /right, /left or string to fill
 	/F /fixed def	% floating point format
+	/S /char def	% string format, /hex: postscript hexstring
 	/R 10 def	% radix
 	{ 1 {
 		dup type /integertype eq { R 32 string cvrs A W aprint-align exit } if
 		dup type /realtype eq { P aprint-float-fixed A W aprint-align exit } if
 		dup type /dicttype eq { { def } forall exit } if
 		dup type /nametype eq { dup length string cvs } if % fall through
-		dup type /stringtype eq { A W aprint-align exit } if
+		dup type /stringtype eq {
+			aprint-format-string A W aprint-align exit
+		} if
 		dup type /booleantype eq {
 			{ (true) } { (false) } ifelse print exit
 		} if
@@ -436,17 +499,6 @@ currentdict /decodeUTF8Limit undef
 	pop
 } bind def
 
-% arrayofstr <concatallstring> str
-/concatallstring {
-	dup 0 exch { length add } forall
-	string exch
-	0 exch {
-		dup length exch
-		3 index exch 3 index exch putinterval
-		add
-	} forall pop
-} bind def
-
 % str dec-encproc <convertstring> str'
 %	dec-encproc: str <dec-encproc> substrtail strchar
 /convertstring {
@@ -460,13 +512,24 @@ currentdict /decodeUTF8Limit undef
 	end
 } bind def
 
-% file num <forward> -
-/forward {
-	1 index fileposition add setfileposition
-} bind def
-% str <str2num> num
-/str2num {
-	0 exch { exch 8 bitshift add } forall
+% strarray pos size  <getstrarray> substr true
+% strarray pos size <getstrarray> false
+/getstrarray {
+	4 dict begin
+	/sz exch def
+	/pos exch def
+	/got false def
+	{
+		/s exch def
+		pos s length lt {
+			s pos sz getinterval
+			/got true def
+			exit
+		} if
+		/pos pos s length sub def
+	} exec-forall
+	got
+	end
 } bind def
 
 % proc <moveverbose> -
@@ -1150,8 +1213,8 @@ currentdict end
 	} ifelse
 } bind def
 
-% dict substarray <mergeCoverage> dict
-/mergeCoverage {
+% dict substarray <ttfMergeCoverage> dict
+/ttfMergeCoverage {
 	dup type /dicttype eq {
 		begin
 		Coverage /CoverageLookup get {
@@ -1167,6 +1230,149 @@ currentdict end
 		{ mergeCoverage } forall
 	} ifelse
 } bind def
+
+%---------------------------------------------------------------------
+% CMap Utilityes
+%---------------------------------------------------------------------
+
+1 dict begin
+
+/CMapList 1 dict def
+
+/begincmap {
+	(begincmap\n) aprintDebug
+	/CodeMap 5 dict def
+	CodeMap begin
+	/ForwardCMap 1 dict def
+	/ReverseCMap 1 dict def
+	/BaseCMaps [ ] def
+	end
+} bind def
+
+/usecmap {
+	1 dict begin
+		/BaseCMapName exch def
+		[ (usecmap: cmapname=) BaseCMapName ] aprintDebug
+		/CMap /Category findresource begin
+			BaseCMapName 256 string ResourceFileName
+		end
+		[ ( filename=) 2 index (\n) ] aprintVerbose
+		(r) file /File exch def
+		File cvx protected-exec
+		File closefile
+		CodeMap begin
+			BaseCMaps aload length 1 add array
+			//CMapList BaseCMapName get
+			exch astore /BaseCMaps exch def
+		end
+	end
+} bind def
+
+/begincodespacerange {
+	(begincodespacerange\n) aprintVerbose
+	mark
+} bind def
+
+/endcodespacerange {
+	(endcodespacerange\n) aprintVerbose
+	cleartomark pop
+} bind def
+
+/beginnotdefrange {
+	(beginnotdefrange\n) aprintVerbose
+	mark
+} bind def
+
+/endnotdefrange {
+	(endnotdefrange\n) aprintVerbose
+	cleartomark pop
+} bind def
+
+/begincidchar {
+	(begincidchar ... ) aprintDebug
+	/cidchar mark
+} bind def
+
+/append2dict{
+	2 index 2 index known {
+		2 index 2 index get
+		[ exch dup type /arraytype eq {
+			aload pop
+		} if
+		counttomark 1 add index ]
+		exch pop put
+	} {
+		put
+	} ifelse
+} bind def
+
+/endcidchar {
+	(endcidchar\n) aprintDebug
+	CodeMap begin
+	] exch /cidchar ne { /endcidchar-notbegin trap } if
+	1 index 2 mul 1 index length ne { /endcidchar-length trap } if
+	exch {
+		1 index exch 2 mul 2 getinterval aload pop
+		ForwardCMap
+			2 index [ (  ) << /S /hex >> 3 index ] aprintVerbose
+			2 index [ ( -> ) 2 index (\n) ] aprintVerbose
+			append2dict
+		ReverseCMap exch 2 index append2dict pop
+	} repeat-count
+	pop
+	end
+} bind def
+
+/begincidrange {
+	/cidrange (begincidrange ... ) aprintDebug
+	mark
+} bind def
+
+/endcidrange {
+	CodeMap begin
+	(endcidrange\n) aprintDebug
+	] exch /cidrange ne { /endcidrange-notbegin trap } if
+	1 index 3 mul 1 index length ne { /endcidrange-length trap } if
+	exch {
+		1 index exch 3 mul 3 getinterval
+		[ (  ) << /S /hex >> 3 index 0 get << /S /char >> ( ... )
+			<< /S /hex >> 7 index 1 get << /S /char >> ( -> )
+			10 index 2 get (\n) ] aprintVerbose
+		dup 0 get length string 1 index 2 get
+		2 index 0 get str2num 1 4 index 1 get str2num {
+			2 index num2str
+			ForwardCMap
+				1 index [ (    ) << /S /hex >> 3 index ] aprintMoreVerbose
+				3 index [ ( -> ) 2 index (\n) ] aprintMoreVerbose
+				append2dict
+			ReverseCMap 2 index 2 index append2dict
+			pop 1 add
+		} for
+		pop pop pop
+	} repeat-count
+	pop
+	end
+} bind def
+
+/endcmap {
+	(endcmap\n) aprintDebug
+} bind def
+
+% key inst cat <defineresource> inst
+/defineresource {
+	[ (defineresource: cat=) 2 index ( name=) 6 index (\n) ] aprintDebug
+	/CMap ne { /defrsc0 trap } if
+	exch //CMapList exch 2 index put
+} bind def
+
+currentdict end /CIDInit exch /ProcSet defineresource pop
+
+/cmapname /90ms-RKSJ-V def
+/CMap /Category findresource
+begin cmapname 256 string ResourceFileName end
+[ (getting filename for ) cmapname (: ) 4 index (\n) ] aprintDebug
+(r) file dup cvx exec closefile
+quit
 
 [ /MS-PGothic /IPAexMincho /DFPKaiSho-Md ] {
 	(-----------------------------------------------------------------\n) print
