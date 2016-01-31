@@ -1059,19 +1059,17 @@ currentdict end
 % ttf lutdict <ttfReadGSUBLookupSubTable> ttf lutdict substarray
 /ttfReadGSUBLookupSubTable {
 	1 index begin
-	dup /LookupType get 1 eq {
-		dup /SubTable get dup length array dup
-		{	% ttf lutdict SubTable array array index
-			5 index 4 index 2 index ttfReadGSUBLookupType1SubTable
-			% ttf lutdict SubTable array array index ttf substdict
+	dup begin
+	LookupType 1 eq {
+		SubTable length array dup {
+			% ttf lutdict aray array index
+			4 index SubTable 2 index ttfReadGSUBLookupType1SubTable
 			exch pop put
 		} for-array
-		% ttf lutdict SubTable array
-		exch pop
 	} {
 		/ttf-gsub-lookuptype trap
 	} ifelse
-	end
+	end end
 } bind def
 
 % ttfdict scriptid langid featureid <ttfFindGSUBTable>
