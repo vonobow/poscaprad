@@ -1,15 +1,15 @@
 %!
 
-/MaxFontsPerFile 1000 def
-/MaxTablesPerFonts 1000 def
-/MaxNamesPerFonts 1000 def
-/MaxStringBuffer 256 def
 /ttfprocDebug { exec } def
 /ttfprocVerbose { pop } def
 /ttfprocMoreVerbose { pop } def
-/aprintDebug { ttfprocDebug { aprint } ttfprocDebug } def
-/aprintVerbose { ttfprocVerbose { aprint } ttfprocVerbose } def
-/aprintMoreVerbose { ttfprocMoreVerbose { aprint } ttfprocMoreVerbose } def
+/aprintDebug { ttfprocDebug { aprint flush } ttfprocDebug } def
+/aprintVerbose { ttfprocVerbose { aprint flush } ttfprocVerbose } def
+/aprintMoreVerbose {
+	ttfprocMoreVerbose { aprint flush } ttfprocMoreVerbose
+} def
+
+/MaxStringBuffer 256 def
 
 % value object key [ vokput ] -
 /vokput { 2 index put pop } bind def
@@ -23,14 +23,6 @@
 % knownget has same functionality as .knownget in GS.
 /knownget {
 	2 copy known { get true } { pop pop false } ifelse
-} bind def
-
-% <default> <dict> <key> tinydefaultget <val>
-% return value for key in dict, if found.
-% return default if else.
-% order of parameter is different from defaultget in akamoz-util.ps
-/tinydefaultget {
-	knownget { exch pop } if
 } bind def
 
 % proc <protected-exec> -
@@ -47,6 +39,22 @@
 	exited { exit } if
 } bind def
 
+% array makeproc proc
+%	this procedure cannot leave name as it is,
+%	if it is not included in sub-clauses.
+/makeproc {
+	[ exch { dup type /nametype eq { cvx } if } forall ] cvx
+} bind def
+
+% <obj> <proc> exec-forall -
+/exec-forall {
+	1 index type /arraytype eq {
+		forall
+	} {
+		1 exch repeat
+	} ifelse
+} bind def
+
 % array proc <for-array> -
 %	procspec: array num <proc> -
 /for-array {
@@ -59,16 +67,9 @@
 	end
 } bind def
 
-% array proc <for-array-reverse> -
-%	procspec: array num <proc> -
-/for-array-reverse {
-	1 dict begin
-	/p exch def
-	/a exch def
-	a length 1 sub -1 0 {
-		a exch /p load protected-exec
-	} for
-	end
+% num proc <repeat-count> -
+/repeat-count {
+	exch 1 sub exch 0 1 4 2 roll for
 } bind def
 
 % - [ strbufCreate ] strbuf
@@ -111,19 +112,6 @@
 	end end
 } bind def
 
-% strbuf int [ strbufAppendInt ] -
-/strbufAppendInt {
-	1 index begin
-	3 dict begin
-	/n exch def
-	/strbuf exch def
-	/newlen pos 1 add def
-	strbuf newlen strbufRealloc
-	buf pos n put
-	strbuf /pos newlen put
-	end end
-} bind def
-
 % strbuf [ strbufGetString ] string
 /strbufGetString {
 	begin
@@ -139,6 +127,151 @@
  	s n s length n sub getinterval
 	s 0 n getinterval
 	end
+} bind def
+
+/aprint-float-digits {
+	dup 0.1 mul 0.05 add floor exch % div val
+	1 index 10 mul sub round	% div mod
+	dup 0 lt { pop (0) } {
+	dup 9 gt { pop (9) } {
+		cvi 1 string cvs	% default
+	} ifelse } ifelse exch
+} bind def
+
+/aprint-longval-divmod10 {
+	1 dict begin
+	/m 0 def
+	/f true def
+	[ exch {
+		m 256 mul add dup 10 idiv exch
+		10 mod /m exch def
+		dup 0 eq f and { pop } if
+		/f false def
+	} forall ]
+	m
+	end
+} bind def
+
+% val width <aprint-float-fixed> str
+/aprint-float-fixed {
+	1 dict begin
+	/prec exch def
+	/val exch def
+	/str strbufCreate def
+	/s 1 string def
+
+	% 符号
+	val 0 lt {
+		str (-) strbufAppend
+		/val val abs def
+	} if
+
+	% 丸めておく
+	/val val 10 prec neg exp 0.5 mul add def
+
+	% 整数部と小数部に分ける
+	/ipart val floor def
+	/fpart val ipart sub def
+
+	% 整数部を256進表現にする。
+	/n 0 def
+	{
+		ipart 1 lt { exit } if
+		/ipart ipart 256 div def
+		/n n 8 add def
+		n 5000 gt { /aprint-float-overflow trap } if
+	} loop
+	/ipart [ ipart n 8 idiv {
+		256 mul dup floor cvi exch 1 index sub
+	} repeat pop ] def
+
+	% 下位桁から10進分解する。
+	mark {
+		ipart length 0 eq { exit } if
+		ipart aprint-longval-divmod10 exch /ipart exch def
+	} loop
+
+	% 文字列に直す
+	{
+		dup mark eq { exit } if
+		s cvs str exch strbufAppend
+	} loop
+	pop
+
+	% 空っぽなら0を追加
+	str strbufLength 0 eq { str (0) strbufAppend } if
+
+	% 小数部
+	str (.) strbufAppend
+	fpart prec {
+		10 mul dup floor dup cvi s cvs
+		str exch strbufAppend
+		sub
+	} repeat pop
+
+	str strbufGetString
+	end
+} bind def
+
+% str align width aprint-align -
+/aprint-align {
+	2 index length	% str align width len
+	sub	% str align width-len
+	dup 0 le {
+		pop pop print
+	} { exch dup /right eq {	% str width-len align
+		pop { ( ) print } repeat print
+	} { dup /left eq {
+		pop exch print { ( ) print } repeat
+	} { type /stringtype eq {
+		1 index 0 1 getinterval (-) eq {
+			(-) print { A print } repeat
+			1 1 index length 1 sub getinterval print
+		} {
+			{ A print } repeat print
+		} ifelse
+	} {
+		/aprint-align trap
+	} ifelse } ifelse } ifelse } ifelse
+} def
+
+% array <aprint> -
+% anyother <aprint> -
+/aprint {
+	1 dict begin
+	/W 0 def	% field width
+	/P 6 def	% precision
+	/A /right def	% align: /right, /left or string to fill
+	/F /fixed def	% floating point format
+	/R 10 def	% radix
+	{ 1 {
+		dup type /integertype eq { R 32 string cvrs A W aprint-align exit } if
+		dup type /realtype eq { P aprint-float-fixed A W aprint-align exit } if
+		dup type /dicttype eq { { def } forall exit } if
+		dup type /nametype eq { dup length string cvs } if % fall through
+		dup type /stringtype eq { A W aprint-align exit } if
+		dup type /booleantype eq {
+			{ (true) } { (false) } ifelse print exit
+		} if
+		/aprint trap
+	} repeat } exec-forall
+	end
+} def
+
+/dstack {
+	(--- ) print aprint ( ---\n) print
+	pstack
+	(---------\n) print flush
+} bind def
+
+/ddump {
+	(=== ) print aprint ( ===\n) print
+	dup { exch aprint ( ) print == } forall
+	(=========\n) print flush
+} bind def
+
+/dval {
+	dup aprint (=) print load ==
 } bind def
 
 % str <charbytes> num
@@ -327,15 +460,6 @@ currentdict /decodeUTF8Limit undef
 	end
 } bind def
 
-% <obj> <proc> exec-forall -
-/exec-forall {
-	1 index type /arraytype eq {
-		forall
-	} {
-		1 exch repeat
-	} ifelse
-} bind def
-
 % file num <forward> -
 /forward {
 	1 index fileposition add setfileposition
@@ -345,296 +469,206 @@ currentdict /decodeUTF8Limit undef
 	0 exch { exch 8 bitshift add } forall
 } bind def
 
-/aprint-float-digits {
-	dup 0.1 mul 0.05 add floor exch % div val
-	1 index 10 mul sub round	% div mod
-	dup 0 lt { pop (0) } {
-	dup 9 gt { pop (9) } {
-		cvi 1 string cvs	% default
-	} ifelse } ifelse exch
-} bind def
-
-/aprint-longval-divmod10 {
+% proc <moveverbose> -
+/moreverbose {
 	1 dict begin
-	/m 0 def
-	/f true def
-	[ exch {
-		m 256 mul add dup 10 idiv exch
-		10 mod /m exch def
-		dup 0 eq f and { pop } if
-		/f false def
-	} forall ]
-	m
+	/CurrentVerbose /ttfprocVerbose load def
+	/ttfprocVerbose /ttfprocMoreVerbose load store
+	protected-exec
+	/ttfprocVerbose /CurrentVerbose load store
 	end
-} bind def
-
-% val width <aprint-float-fixed> str
-/aprint-float-fixed {
-	1 dict begin
-	/prec exch def
-	/val exch def
-	/str strbufCreate def
-	/s 1 string def
-
-	% 符号
-	val 0 lt {
-		str (-) strbufAppend
-		/val val abs def
-	} if
-
-	% 丸めておく
-	/val val 10 prec neg exp 0.5 mul add def
-
-	% 整数部と小数部に分ける
-	/ipart val floor def
-	/fpart val ipart sub def
-
-	% 整数部を256進表現にする。
-	/n 0 def
-	{
-		ipart 1 lt { exit } if
-		/ipart ipart 256 div def
-		/n n 8 add def
-		n 5000 gt { /aprint-float-overflow trap } if
-	} loop
-	/ipart [ ipart n 8 idiv {
-		256 mul dup floor cvi exch 1 index sub
-	} repeat pop ] def
-
-	% 下位桁から10進分解する。
-	mark {
-		ipart length 0 eq { exit } if
-		ipart aprint-longval-divmod10 exch /ipart exch def
-	} loop
-
-	% 文字列に直す
-	{
-		dup mark eq { exit } if
-		s cvs str exch strbufAppend
-	} loop
-	pop
-
-	% 空っぽなら0を追加
-	str strbufLength 0 eq { str (0) strbufAppend } if
-
-	% 小数部
-	str (.) strbufAppend
-	fpart prec {
-		10 mul dup floor dup cvi s cvs
-		str exch strbufAppend
-		sub
-	} repeat pop
-
-	str strbufGetString
-	end
-} bind def
-
-% str align width aprint-align -
-/aprint-align {
-	2 index length	% str align width len
-	sub	% str align width-len
-	dup 0 le {
-		pop pop print
-	} { exch dup /right eq {	% str width-len align
-		pop { ( ) print } repeat print
-	} { dup /left eq {
-		pop exch print { ( ) print } repeat
-	} { type /stringtype eq {
-		1 index 0 1 getinterval (-) eq {
-			(-) print { A print } repeat
-			1 1 index length 1 sub getinterval print
-		} {
-			{ A print } repeat print
-		} ifelse
-	} {
-		/aprint-align trap
-	} ifelse } ifelse } ifelse } ifelse
-} bind def
-
-% array <aprint> -
-% anyother <aprint> -
-/aprint {
-	1 dict begin
-	/W 0 def	% field width
-	/P 6 def	% precision
-	/A /right def	% align: /right, /left or string to fill
-	/F /fixed def	% floating point format
-	/R 10 def	% radix
-	{ 1 {
-		dup type /integertype eq { R 32 string cvrs A W aprint-align exit } if
-		dup type /realtype eq { P aprint-float-fixed A W aprint-align exit } if
-		dup type /dicttype eq { { def } forall exit } if
-		dup type /nametype eq { dup length string cvs } if % fall through
-		dup type /stringtype eq { A W aprint-align exit } if
-		dup type /booleantype eq {
-			{ (true) } { (false) } ifelse print exit
-		} if
-		/aprint trap
-	} repeat } exec-forall
-	end
-} bind def
-
-/dstack {
-	(--- ) print aprint ( ---\n) print
-	pstack
-	(---------\n) print flush
 } bind def
 
 % file num <bindfilebuffer> obj
 /bindfilebuffer {
-	[ 3 1 roll string /readstring cvx /not cvx ] cvx
+	[ 3 1 roll string /readstring /not { /readstring trap } /if ] makeproc
 } bind def
 
-% file <ttfReadTTCHeader> file array
-/ttfReadTTCHeader {
+1 dict begin % ttfprocUtility
+
+/b2 /FontFile 2 bindfilebuffer def
+/b4 /FontFile 4 bindfilebuffer def
+/n2 { b2 str2num } bind def
+/n4 { b4 str2num } bind def
+/off2 { n2 Offset add } bind def
+/setpos { FontFile exch setfileposition } bind def
+/fwd { FontFile fileposition add setpos } bind def
+
+/ckver {
+	/Version b4 def
+	{ ( ver=) print Version ttfPrintVersion } ttfprocDebug
+	Version gt { /ttfver trap } if
+} bind def
+
+/ckdup {
+	currentdict 1 index known { /ttf-duptag trap } if
+} bind def
+
+% obj key proc <retr> dict
+% retrieve standard table
+/retr {
 	1 dict begin
-	dup 4 bindfilebuffer /b4 exch def
-	dup fileposition
-	b4 { /ttfc0 trap } if
-	(ttcf) eq {
-		% TrueType Collection
-		(TrueType Collection: ) aprintDebug
-		pop
-		b4 { /ttfcver0 trap } if
-		str2num 16#00010000 lt { /ttcfver1 trap } if
-		b4 { /ttfcnumf0 trap } if
-		str2num dup MaxFontsPerFile gt { /ttfcnumf1 trap } if
-		[ (numfonts=) 2 index (\n) ] aprintDebug
-		array dup {
-			[ (  font ) 2 index (: ) ] aprintVerbose
-			b4 { /ttcfoff0 trap } if str2num
-			[ (off=) 2 index (\n) ] aprintVerbose
-			put
-		} for-array
+	/p exch def
+	/k exch def
+	/o exch def
+	o k get dup type /dicttype ne {
+		1 dict begin
+		o k currentdict put
+		/Offset exch def
+		true
+	} { dup /Retrieved known not {
+		begin true
 	} {
-		% must be TrueType single font
-		1 array astore
+		false
+	} ifelse } ifelse
+	{
+		/Key k def
+		[ Key (: off=) Offset ] aprintDebug
+		Offset setpos p
+		/Retrieved true def
+		(\n) aprintDebug
+		currentdict end
+	} {
+		[ k (: (cached)\n) ] aprintDebug
 	} ifelse
 	end
 } bind def
 
-% num <ttfPrintVersion> -
+% name num <idxtbl> -
+/idxtbl {
+	array exch 1 index def
+	{
+		n2 [ ( ) 2 index ] aprintVerbose put
+	} for-array
+} bind def
+
+% name num <offtbl> -
+/offtbl {
+	array exch 1 index def
+	{
+		off2 [ ( ) 2 index ] aprintVerbose put
+	} for-array
+} bind def
+
+% num <tagoff> -
+/tagoff {
+	{
+		b4 cvn [ (\n  ) 2 index ] aprintVerbose ckdup
+		off2 [ (: off=) 2 index ] aprintVerbose def
+	} repeat
+} bind def
+
+currentdict end
+/ttfprocUtility exch def
+
+% file <ttfReadTTCHeader> otfdict
+/ttfReadTTCHeader {
+	//ttfprocUtility begin
+	1 dict begin
+	/FontFile exch def
+	b4 (ttcf) eq {
+		(TrueType Collection: ) aprintDebug
+		<00010000> ckver
+		/NumFonts n4 def
+		[ ( numfonts=) NumFonts ] aprintDebug
+		[ (\n  offsets:) ] aprintVerbose
+		/OffsetTable [ NumFonts {
+			n4 [ ( ) 2 index ] aprintVerbose
+		} repeat ] def
+	} {
+		(TrueType single font (maybe)) aprintDebug
+		/Version <00010000> def
+		/NumFonts 1 def
+		/OffsetTable [ 0 ] def
+	} ifelse
+	(\n) aprintDebug
+	currentdict end end
+} bind def
+
+% str <ttfPrintVersion> -
 /ttfPrintVersion {
-	[
+	str2num [
 		1 index -16 bitshift (.)
 		<< /R 16 /W 4 /A (0) >> 4 index 16#ffff and
 	] aprint
 	pop
 } bind def
 
-% file array subfontnum <ttfReadTrueTypeHeader> ttfdict
+% otfdict subfontnum <ttfReadTrueTypeHeader> ttfdict
 /ttfReadTrueTypeHeader {
-	3 array astore
-	dup 1 get 1 index 2 get get dup type /integertype ne {
-		exch pop
-	} {
-		% [ file array subfontnum ] offset
-		1 dict begin
-		/offset exch def
-		aload pop
-		/subfontnum exch def
-		/a exch def
-		/f exch def
-		/ttftable 1 dict def
-		/b4 f 4 bindfilebuffer def
-		/b2 f 2 bindfilebuffer def
-		f offset setfileposition
-
-		[ (TrueType Offset Table: subfont=) subfontnum ] aprintDebug
-		[ ( off=) offset ] aprintDebug
-		b4 { /ttfhver0 trap } if
-		str2num { dup ( version=) print ttfPrintVersion } ttfprocDebug
-		16#00010000 ne { /ttfhver1 trap } if
-		b2 { /ttfnumtbl0 trap } if
-		str2num [ ( numtables=) 2 index (\n) ] aprintDebug
-		dup MaxTablesPerFonts gt { /ttfnumtbl1 trap } if
-		f 6 forward
-		{	% << name [ off len ] ... >>
-			ttftable
-			b4 { /ttfhtblid trap } if
-			cvn [ (  id=) 2 index ] aprintVerbose
-			f 4 forward
-			[
-				b4 { /ttfhtbloff trap } if
-				str2num
-				[ ( off=) 2 index ] aprintVerbose
-				b4 { /ttfhtbllen trap } if
-				str2num
-				[ ( len=) 2 index (\n) ] aprintVerbose
-			] put
-		} repeat
-
-		a subfontnum ttftable put
-		ttftable begin
-		/File f def
-		/Offset offset def
-		/SubFontID subfontnum def
-		end
-		ttftable end
-	} ifelse
+	1 index begin
+	//ttfprocUtility begin
+	1 dict begin
+	/sf exch def
+	/otf exch def
+	(TrueType Offset Table ) aprintDebug
+	OffsetTable sf {
+		% copy utility procedures
+		//ttfprocUtility currentdict copy
+		/FontFile FontFile def
+		<00010000> ckver
+		/NumTables n2 def
+		[ ( cnt=) NumTables ] aprintDebug
+		6 fwd
+		/OffsetTable NumTables dict def
+		OffsetTable begin NumTables {
+			b4 cvn [ (\n  ) 2 index ] aprintVerbose ckdup
+			<<
+				/Checksum n4
+				[ (: sum=) << /R 16 /W 8 /A (0) >> 3 index ] aprintVerbose
+				/Offset n4 [ ( off=) 2 index ] aprintVerbose
+				/Length n4 [ ( len=) 2 index ] aprintVerbose
+			>> def
+		} repeat end
+	} retr
+	end end end exch pop
 } bind def
 
-% ttfdict name <ttfPrepareTable> ttfdict dict bool
-/ttfPrepareTable {
-	2 copy get dup type /arraytype eq {
-		1 dict begin
-			/ttf 3 index def
-			/f ttf /File get def
-			/b2 f 2 bindfilebuffer def
-			/b4 f 4 bindfilebuffer def
-			1 dict begin
-				aload pop
-				/Length exch def
-				/Offset exch def
-				/Tag exch def
-				[ Tag (: off=) Offset ] aprintDebug
-				f Offset setfileposition
-				ttf Tag currentdict put
-			currentdict end
-		true
-	} {
-		exch pop false
-	} ifelse
+% otfdict | ttfdict <ttfCloseFontFile> -
+/ttfCloseFontFile {
+	begin
+	FontFile type /filetype eq {
+		(ttfCloseFontFile: closing file\n) aprintDebug
+		FontFile closefile
+		/FontFile null def
+	} if
+	end
 } bind def
 
 % ttfdict <ttfReadNameTable> ttfdict namedict
 /ttfReadNameTable {
-	/name ttfPrepareTable { % begin dict
-		begin
-		b2 { /ttfnamefmt trap } if
-		str2num [ ( format=) 2 index ] aprintDebug
-		dup 0 eq {
-			pop
-			b2 { /ttfnamecount trap } if
-			str2num /Count exch def
+	dup begin
+	OffsetTable /name {
+		/Format n2 def
+		[ ( format=) Format ] aprintDebug
+		Format 0 eq {
+			/Count n2 def
 			[ ( cnt=) Count ] aprintDebug
-			Count MaxNamesPerFonts gt { /ttfnamecount0 trap } if
-			b2 { /ttfnamestroff trap } if
-			str2num Offset add /StringOffset exch def
-			[ ( stroff=) StringOffset (\n) ] aprintDebug
-			Count array /NameRecord exch def
+			/StringOffset off2 def
+			[ ( stroff=) StringOffset ] aprintDebug
+			/NameRecord Count array def
 			NameRecord {
-				[ (  ) 2 index (: ) ] aprintVerbose
+				[ (\n  ) 2 index (:) ] aprintVerbose
 				<<
-				/PlatformID b2 { /ttfnamepid trap } if str2num
-				[ (platform=) 2 index ] aprintVerbose
-				/EncodingID b2 { /ttfnameeid trap } if str2num
+				/PlatformID n2
+				[ ( platform=) 2 index ] aprintVerbose
+				/EncodingID n2
 				[ ( enc=) 2 index ] aprintVerbose
-				/LanguageID b2 { /ttfnamelid trap } if str2num
+				/LanguageID n2
 				[ ( lang=) 2 index ] aprintVerbose
-				/NameID b2 { /ttfnamenid trap } if str2num
+				/NameID n2
 				[ ( nameid=) 2 index ] aprintVerbose
-				/Length b2 { /ttfnamelen trap } if str2num
+				/Length n2
 				[ ( len=) 2 index ] aprintVerbose
-				/String b2 { /ttfnameoff trap } if str2num StringOffset add
-				[ ( off=) 2 index (\n) ] aprintVerbose
+				/String n2 StringOffset add
+				[ ( off=) 2 index ] aprintVerbose
 				>> put
 			} for-array
 		} {
 			/ttfnamefmt0 trap
 		} ifelse
-		currentdict end
-	end } if
+	} retr
+	end
 } bind def
 
 % decode table for platform ID 3
@@ -643,23 +677,22 @@ currentdict /decodeUTF8Limit undef
 	10 { decodeUCS4 }
 >> def
 
+/ttfNameDecode <<
+	3 ttfNameDecodePF3
+>> def
+
 % dict <ttfGetDecodeTable> ( decodeproc true | false )
 %	using PlatformID and EncodingID in dict.
 /ttfGetDecodeTable {
 	begin
-	1 {
-		PlatformID 3 eq {	% Windows
-			//ttfNameDecodePF3 EncodingID knownget exit
-		} if
-		false
-	} repeat
+	//ttfNameDecode PlatformID knownget dup { pop EncodingID knownget } if
 	end
 } bind def
 
-% ttfdict <ttfReadFontName> ttfdict str
-/ttfReadFontName {
+% ttfdict <ttfGetFontName> ttfdict str
+/ttfGetFontName {
+	dup begin
 	1 dict begin
-	/f 1 index /File get def
 	/got false def
 
 	ttfReadNameTable	% ttfdict namedict
@@ -675,14 +708,13 @@ currentdict /decodeUTF8Limit undef
 	begin
 	String dup type /integertype eq {
 		[ (  fontname: off=) 2 index ] aprintDebug
-		f exch setfileposition
-		f Length string readstring not { /ttfdfn1 trap } if
+		setpos
+		FontFile Length string readstring not { /ttfdfn1 trap } if
 		[ /decproc loadexec /encodeUTF8 loadexec ] cvx convertstring
 		dup /String exch def
 		[ ( string=) String (\n) ] aprintDebug
 	} if
-	end
-	end
+	end end end
 } bind def
 
 % font <ttfFindFontTable> (ttfdict true) | false
@@ -697,449 +729,353 @@ currentdict /decodeUTF8Limit undef
 	FontNickName MaxStringBuffer string ResourceFileName
 	end
 	[ (  filename=) 2 index (\n) ] aprintDebug
-	(r) file /File exch def
-	File ttfReadTTCHeader {	% file array subfontid
-		ttfReadTrueTypeHeader	% ttfdict
-		ttfReadFontName	% ttfdict str
-		dup FontRealName eq { pop /got true def exit } if	% ttfdict
+	(r) file ttfReadTTCHeader /otf exch def
+	otf /NumFonts get {	% otf subfontid
+		otf exch ttfReadTrueTypeHeader	% ttfdict
+		ttfGetFontName	% ttfdict str
+		dup FontRealName eq { pop /got true def exit } if	% ttfdict str
 		FontNickName eq { /got true def exit } if	% ttfdict
-		pop File	% file
-	} for-array	% ttfdict | file
-	got { true } { closefile false } ifelse
+		pop
+	} repeat-count	% ttfdict |
+	got { true } { otf ttfCloseFontFile false } ifelse
 	end
+} bind def
+
+% ttfdict id <ttfCheckSupport> ttfdict
+/ttfCheckSupport {
+	1 index /OffsetTable get exch known
 } bind def
 
 % ttfdict <ttfRead-head> ttfdict
 % 	head table specific informations are stored in head dict.
 %	global informations are stored in ttfdict directly.
 /ttfReadHeadTable {
-	/head ttfPrepareTable { % begin dict
-		begin
-			b4 { /ttfhead-ver0 trap } if
-			str2num /Version exch def
-			{ ( ver=) print Version ttfPrintVersion } ttfprocDebug
-			Version 16#00010000 lt { /ttfhead-ver1 trap } if
+	dup begin
+	OffsetTable /head {
+		<00010000> ckver
+		dup begin
+			14 fwd /UnitsPerEm n2 def
+			[ ( funit=) UnitsPerEm ] aprintDebug
 		end
-		ttf begin
-			f 14 forward
-			b2 { /ttfhead-em trap } if str2num
-			/FUnit exch def
-			[ ( funit=) FUnit (\n) ] aprintDebug
-		end
-	end } {
-		pop
-	} ifelse
+	} retr pop
+	end
 } bind def
 
 % ttfdict <ttfReadMaxpTable> ttfdict
 % 	maxp table specific informations are stored in maxp dict.
 %	global informations are stored in ttfdict directly.
 /ttfReadMaxpTable {
-	/maxp ttfPrepareTable { % begin currentdict
-		begin
-			b4 { /ttfmaxp-ver0 trap } if
-			str2num /Version exch def
-			{ ( ver=) print Version ttfPrintVersion } ttfprocDebug
-			Version 16#00005000 lt { /ttfmaxp-ver1 trap } if
+	dup begin
+	OffsetTable /maxp {
+		<00005000> ckver
+		dup begin
+			/NumGlyphs n2 def
+			[ ( numglyphs=) NumGlyphs ] aprintDebug
 		end
-		ttf begin
-			b2 { /ttfmaxp-ng trap } if
-			str2num /NumGlyphs exch def
-			[ ( numglyphs=) NumGlyphs (\n) ] aprintDebug
-		end
-	end } {
-		pop
-	} ifelse
+	} retr pop
+	end
 } bind def
 
 % ttfdict <ttfReadHheaTable> ttfdict hheadict
 /ttfReadHheaTable {
-	/hhea ttfPrepareTable {
-		begin
-			b4 { /ttfhhea-ver0 trap } if
-			str2num /Version exch def
-			{ ( ver=) print Version ttfPrintVersion } ttfprocDebug
-			Version 16#00010000 lt { /ttfhhea-ver1 trap } if
-			f 28 forward
-			b2 { /ttfhhea-format trap } if
-			str2num /MetricDataFormat exch def
-			[ ( format=) MetricDataFormat ] aprintDebug
-			b2 { /ttfhhea-numhmtx trap } if
-			str2num /NumberOfMetrics exch def
-			[ ( numhmtx=) NumberOfMetrics (\n) ] aprintDebug
-		currentdict end
-	end } if
+	dup begin
+	OffsetTable /hhea {
+		<00010000> ckver
+		28 fwd
+		/MetricDataFormat n2 def
+		[ ( format=) MetricDataFormat ] aprintDebug
+		/NumberOfMetrics n2 def
+		[ ( numhmtx=) NumberOfMetrics ] aprintDebug
+	} retr
+	end
 } bind def
 
-/neareq {
-	2 copy mul 0 lt {
-		pop pop false
-	} {
-		div 1 sub abs 1e-5 lt
-	} ifelse
-} bind def
-
-% ttfdict array headdict <ttfReadMetricsTable> ttfdict metricsdict
+% ttfdict ( hheadict | vheadict ) id <ttfReadMetricsTable> ttfdict mtxdict
 %	metrics values are normalized.
 /ttfReadMetricsTable {
+	2 index begin
 	1 dict begin
-	dup /MetricDataFormat get 0 ne { /mtx-format trap } if
-	/NumberOfMetrics get /m exch def
-	/ttf 2 index def
-	/f ttf /File get def
-	/b2 f 2 bindfilebuffer def
-	ttf ttfReadHeadTable
-	dup /FUnit get /fu exch def
+	/id exch def
+	/xhea exch def
+	xhea /MetricDataFormat get 0 ne { /mtx-format trap } if
+	ttfReadHeadTable
 	ttfReadMaxpTable
-	/NumGlyphs get /n exch def
-	1 dict begin
-		aload pop
-		/Length exch def
-		/Offset exch def
-		[ (  metrics: off=) Offset (\n) ] aprintDebug
-		/AdvanceDistance m array def
-		f Offset setfileposition
-		[ (  values:) ] aprintMoreVerbose
+	OffsetTable id {
+		/AdvanceDistance xhea /NumberOfMetrics get array def
+		[ (\n  values:) ] aprintMoreVerbose
 		AdvanceDistance {
-			b2 { /ttfmtx-advdst trap } if
-			str2num fu div
-			[ ( ) 2 index ] aprintMoreVerbose
-			put
-			b2 { /ttfmtx-bearing trap } if pop
+			n2 UnitsPerEm div
+			[ ( ) 2 index ] aprintMoreVerbose put
+			2 fwd
 		} for-array
-		[ (\n) ] aprintMoreVerbose
-	currentdict end
-	end
+	} retr
+	end end
 } bind def
 
 % ttfdict <ttfReadHmtxTable> ttfdict hmtxdict
 /ttfReadHmtxTable {
-	dup /hmtx get dup type /arraytype eq {
-		1 index ttfReadHheaTable exch pop
-		(hmtx: reading ...\n) aprintDebug
-		ttfReadMetricsTable
-		2 copy /hmtx exch put
-	} if
+	ttfReadHheaTable
+	/hmtx ttfReadMetricsTable
 } bind def
 
 % ttfdict <ttfReadVheaTable> ttfdict vheaddict
 /ttfReadVheaTable {
-	/vhea ttfPrepareTable {
-		begin
-			b4 { /ttfvhea-ver0 trap } if
-			str2num /Version exch def
-			{ ( ver=) print Version ttfPrintVersion } ttfprocDebug
-			Version 16#00010000 lt { /ttfvhea-ver1 trap } if
-			f 28 forward
-			b2 { /ttfvhea-format trap } if
-			str2num /MetricDataFormat exch def
-			[ ( format=) MetricDataFormat ] aprintDebug
-			b2 { /ttfvhea-numhmtx trap } if
-			str2num /NumberOfMetrics exch def
-			[ ( numvmtx=) NumberOfMetrics ] aprintDebug
-			(\n) aprintDebug
-		currentdict end
-	end } if
+	dup begin
+	OffsetTable /vhea {
+		<00010000> ckver
+		28 fwd
+		/MetricDataFormat n2 def
+		[ ( format=) MetricDataFormat ] aprintDebug
+		/NumberOfMetrics n2 def
+		[ ( numvmtx=) NumberOfMetrics ] aprintDebug
+	} retr
+	end
 } bind def
 
 % ttfdict <ttfReadVmtxTable> ttfdict vmtxdict
 /ttfReadVmtxTable {
-	dup /vmtx get dup type /arraytype eq {
-		1 index ttfReadVheaTable exch pop
-		(vmtx: reading ...\n) aprintDebug
-		ttfReadMetricsTable
-		2 copy /vmtx exch put
-	} if
+	ttfReadVheaTable
+	/vmtx ttfReadMetricsTable
 } bind def
 
-% ttfdict comdict name <ttfPrepareTable> ttfdict comdict dict bool
-/ttfPrepareCommonTable {
-	2 copy get dup type /integertype eq {
-		1 dict begin
-			/ttf 4 index def
-			/comdic 3 index def
-			/f ttf /File get def
-			/b2 f 2 bindfilebuffer def
-			/b4 f 4 bindfilebuffer def
-			1 dict begin
-				/Offset exch def
-				/Tag exch def
-				[ Tag (: off=) Offset ] aprintDebug
-				f Offset setfileposition
-				comdic Tag currentdict put
-			currentdict end
-		true
-	} {
-		exch pop false
-	} ifelse
-} bind def
-
-% ttfdict comtbldict <ttfReadScriptList> ttfdict comtbldict slstdict
+% ttfdict comdict id <ttfReadScriptList> ttfdict scrldict
 /ttfReadScriptList {
-	/ScriptList ttfPrepareCommonTable {
-		begin
-			b2 { /ttfscript-count trap } if
-			str2num /ScriptCount exch def
-			[ ( cnt=) ScriptCount ] aprintDebug
-			/ScriptRecord ScriptCount dict def
-			(\n) aprintDebug
-			ScriptRecord begin
-				ScriptCount {
-					b4 { /ttfscript-tag trap } if
-					[ (  tag=) 2 index ] aprintVerbose
-					cvn
-					currentdict 1 index known { /ttfscript-dup trap } if
-					b2 { /ttfscript-off trap } if
-					str2num Offset add
-					[ ( off=) 2 index ] aprintVerbose
-					def
-					(\n) aprintVerbose
-				} repeat
-			end
-		currentdict end
-	end } if
+	1 index begin
+	/ScriptList {
+		/ScriptCount n2 def
+		[ ( cnt=) ScriptCount ] aprintDebug
+		ScriptCount tagoff
+	} retr
+	end
 } bind def
 
-% ttfdict comdict slstdict scriptid <ttfReadScriptTable>
-%	ttfdict comdict stbldict
+% ttfdict scrldict scriptid <ttfReadScriptTable> ttfdict scrtdict
 /ttfReadScriptTable {
-	exch /ScriptRecord get exch 2 copy get dup type /integertype eq {
-		1 dict begin
-			/ttf 5 index def
-			/f ttf /File get def
-			/b2 f 2 bindfilebuffer def
-			/b4 f 4 bindfilebuffer def
-			/defaultpos null def
-			1 dict begin
-				/Offset exch def
-				/Tag exch def
-				[ Tag (: off=) Offset ] aprintDebug
-				f Offset setfileposition
-				Tag currentdict put
-				b2 { /ttfscrtbl-deflang trap } if
-				/TotalCount 0 def
-				str2num dup 0 ne {
-					Offset add /defaultpos exch store
-					[ ( deflang=) defaultpos ] aprintDebug
-					/TotalCount 1 def
-				} {
-					pop
-				} ifelse
-				b2 { /ttfscrtbl-count trap } if
-				str2num /LangSysCount exch def
-				[ ( cnt=) LangSysCount ] aprintDebug
-				/TotalCount TotalCount LangSysCount add def
-				[ ( total=) TotalCount ] aprintDebug
-				/LangSysRecord TotalCount dict def
-				(\n) aprintDebug
-				LangSysRecord begin
-					defaultpos type /integertype eq {
-						/default defaultpos def
-					} if
-					LangSysCount {
-						b4 { /ttfscrtbl-langtag trap } if
-						[ (  tag=) 2 index ] aprintVerbose
-						cvn
-						b2 { /ttfscrtbl-langoff trap } if
-						str2num Offset add
-						[ ( off=) 2 index ] aprintVerbose
-						(\n) aprintVerbose
-						def
-					} repeat
-				end
-			currentdict end
-		end
-	} {
-		3 -2 roll pop pop
-	} ifelse
+	2 index begin
+	{
+		/DefaultLangSys n2 dup 0 ne {
+			Offset add dup /default exch def
+		} if def
+		[ ( deflang=) DefaultLangSys ] aprintDebug
+		/LangSysCount n2 def
+		[ ( cnt=) LangSysCount ] aprintDebug
+		LangSysCount tagoff
+	} retr
+	end
 } bind def
 
-% ttfdict comdict stbldict langid <ttfReadLangSysTable>
-%	ttfdict comdict langdict
+% ttfdict scrtdict langid <ttfReadLangSysTable> ttfdict langdict
 /ttfReadLangSysTable {
-	exch /LangSysRecord get exch 2 copy get dup type /integertype eq {
-		1 dict begin
-			/ttf 5 index def
-			/f ttf /File get def
-			/b2 f 2 bindfilebuffer def
-			/b4 f 4 bindfilebuffer def
-			1 dict begin
-				/Offset exch def
-				/Tag exch def
-				[ Tag (: off=) Offset ] aprintDebug
-				f Offset setfileposition
-				Tag currentdict put
-				b2 { /ttflangsys-order0 trap } if
-				str2num 0 ne { /ttflangsys-order1 trap } if
-				b2 { /ttflangsys-reqidx trap } if
-				str2num /ReqFeatureIndex exch def
-				[ ( reqidx=) ReqFeatureIndex ] aprintDebug
-				b2 { /ttflangsys-count trap } if
-				str2num /FeatureCount exch def
-				[ ( cnt=) FeatureCount ] aprintDebug
-				(\n  features:) aprintVerbose
-				/FeatureIndex [
-					FeatureCount {
-						b2 { /ttflangsys-index trap } if
-						str2num
-						[ ( ) 2 index ] aprintVerbose
-					} repeat
-				] def
-				(\n) aprintDebug
-			currentdict end
-		end
-	} {
-		3 -2 roll pop pop
-	} ifelse
+	2 index begin
+	(LangSysTable ) aprintDebug
+	{
+		n2 0 ne { /ttflangsys-luorder trap } if
+		/ReqFeatureIndex n2 def
+		[ ( reqidx=) ReqFeatureIndex ] aprintDebug
+		/FeatureCount n2 def
+		[ ( cnt=) FeatureCount ] aprintDebug
+		(\n  fturidx:) aprintVerbose
+		/FeatureIndex FeatureCount idxtbl
+	} retr
+	end
 } bind def
 
-% ttfdict comdict <ttfReadFeatureList> ttfdict comdict featuredict
+% ttfdict comdict <ttfReadFeatureList> ttfdict ftrldict ftrrec
 /ttfReadFeatureList {
-	/FeatureList ttfPrepareCommonTable {
-		begin
-			b2 { /ttffeature-count trap } if
-			str2num /FeatureCount exch def
-			[ ( cnt=) FeatureCount ] aprintDebug
-			/FeatureRecord FeatureCount array def
-			(\n) aprintDebug
-			FeatureRecord {
-				[ (  ) 2 index (:) ] aprintVerbose
-				[
-					b4 { /ttffeature-tag trap } if
-					[ ( tag=) 2 index ] aprintVerbose
-					cvn
-					b2 { /ttffeature-off trap } if
-					str2num Offset add
-					[ ( off=) 2 index ] aprintVerbose
-				] put
-				(\n) aprintVerbose
-			} for-array
-		currentdict end
-	end } if
+	1 index begin
+	/FeatureList {
+		/FeatureCount n2 def
+		[ ( cnt=) FeatureCount ] aprintDebug
+		/FeatureRecord FeatureCount array def
+		FeatureRecord {
+			[ (\n  ) 2 index (:) ] aprintVerbose
+			<< /Tag b4 cvn [ ( tag=) 2 index ] aprintVerbose
+			/Offset off2 [ ( off=) 2 index ] aprintVerbose >> put
+		} for-array
+	} retr
+	dup /FeatureRecord get
+	end
 } bind def
 
-% ttfdict comdict fturpair <ttfReadFeatureTable> ttfdict comdict fturdict
+% ttfdict ftrrec idx <ttfReadFeatureTable> ttfdict ftrtdict luidxarray
 /ttfReadFeatureTable {
-	dup 1 get dup type /integertype eq {
-		% ttf com pair off
-		1 dict begin
-			/ttf 4 index def
-			/comdict 3 index def
-			/f ttf /File get def
-			/b2 f 2 bindfilebuffer def
-			1 dict begin
-				/Offset exch def	% ttf com pair
-				[ (featuretable: off=) Offset ] aprintDebug
-				f Offset setfileposition
-				dup 0 get /Tag exch def
-				[ ( tag=) Tag ] aprintDebug
-				1 currentdict put	% ttf com
-				b2 { /ttffturtbl-params trap } if
-				str2num /FeatureParams exch def
-				[ ( params=) FeatureParams ] aprintDebug
-				FeatureParams 0 ne { /ttffturtbl-params1 trap } if
-				b2 { /ttffturtbl-count trap } if
-				str2num /LookupCount exch def
-				[ ( cnt=) LookupCount ] aprintDebug
-				/LookupListIndex LookupCount array def
-				[ (\n  index:) ] aprintVerbose
-				LookupListIndex {
-					b2 { /ttffturtbl-index trap } if
-					str2num [ ( ) 2 index ] aprintVerbose
-					put
-				} for-array
-				[ (\n) ] aprintDebug
-			currentdict end
-		end
-	} {
-		exch pop
-	} ifelse
+	2 index begin
+	(FeatureTable ) aprintDebug
+	{
+		/FeatureParams n2 def
+		[ ( params=) FeatureParams ] aprintDebug
+		FeatureParams 0 ne { /ttfftrt-params trap } if
+		/LookupCount n2 def
+		[ ( cnt=) LookupCount ] aprintDebug
+		[ (\n  luplidx:) ] aprintVerbose
+		/LookupListIndex LookupCount idxtbl
+	} retr
+	dup /LookupListIndex get
+	end
 } bind def
 
-% ttfdict comdict <ttfReadLookupListTable> ttfdict comdict ludict
-/ttfReadLookupListTable {
-	/LookupList ttfPrepareCommonTable {
-		begin
-			b2 { /ttflookup-count trap } if
-			str2num /LookupCount exch def
-			[ ( cnt=) LookupCount ] aprintDebug
-			(\n  offsets:) aprintVerbose
-			/Lookup [ LookupCount {
-				b2 { /ttflookup-off trap } if
-				str2num Offset add
-				[ 1 index ( ) ] aprintVerbose
-			} repeat ] def
-			(\n) aprintDebug
-		currentdict end
-	end } if
+% ttfdict comdict <ttfReadLookupList> ttfdict lupldict luarray
+/ttfReadLookupList {
+	1 index begin
+	/LookupList {
+		/LookupCount n2 def
+		[ ( cnt=) LookupCount ] aprintDebug
+		(\n  offsets:) aprintVerbose
+		/Lookup LookupCount offtbl
+	} retr
+	dup /Lookup get
+	end
 } bind def
 
-% ttfdict comdict luidx <ttfReadLookupTable> ttfdict comdict lutdict
+% ttfdict luarray luidx <ttfReadLookupTable> ttfdict lutdict
 /ttfReadLookupTable {
-	1 dict begin
-	/luidx exch def
-	ttfReadLookupListTable /Lookup get /lu exch def
-	lu luidx get dup type /integertype eq {
-		% ttfdict comdict offset
-		[ (LookupTable: idx=) luidx ] aprintDebug
-		/ttf 3 index def
-		/f ttf /File get def
-		/b2 f 2 bindfilebuffer def
-		1 dict begin
-			/Offset exch def
-			[ ( off=) Offset ] aprintDebug
-			f Offset setfileposition
-			b2 { /ttflut-type trap } if
-			str2num /LookupType exch def
-			[ ( type=) LookupType ] aprintDebug
-			b2 { /ttflut-flag trap } if
-			str2num /LookupFlag exch def
-			[ ( flag=) LookupFlag ] aprintDebug
-			b2 { ttflut-count trap } if
-			str2num /SubTableCount exch def
-			[ ( cnt=) SubTableCount ] aprintDebug
-			(\n  offsets:) aprintVerbose
-			/SubTable [ SubTableCount {
-				b2 { /ttflut-off trap } if
-				str2num Offset add
-				[ ( ) 2 index ] aprintVerbose
-			} repeat ] def
-			LookupFlag 16#10 and 0 ne {
-				(\n ) aprintVerbose
-				b2 { /ttflut-filt trap } if
-				str2num /MarkFilteringSet exch def
-				[ ( filt=) MarkFilteringSet ] aprintDebug
-			} if
-			(\n) aprintDebug
-		currentdict end
-	} if
+	2 index begin
+	(LookupTable ) aprintDebug
+	{
+		/LookupType n2 def
+		[ ( type=) LookupType ] aprintDebug
+		/LookupFlag n2 def
+		[ ( flag=) LookupFlag ] aprintDebug
+		/SubTableCount n2 def
+		[ ( cnt=) SubTableCount ] aprintDebug
+		(\n  offsets:) aprintVerbose
+		/SubTable SubTableCount offtbl
+		LookupFlag 16#10 and 0 ne {
+			/MarkFilteringSet n2 def
+			[ (\n  filt=) MarkFilteringSet ] aprintDebug
+		} if
+	} retr
+	end
+} bind def
+
+% ttf lsubdict covid <ttfReadCoverageTable> ttf lsubdict covdict
+/ttfReadCoverageTable {
+	2 index begin
+	1 index exch
+	{
+		/CoverageFormat n2 def
+		[ ( fmt=) CoverageFormat ] aprintDebug
+		CoverageFormat 1 eq {
+			/GlyphCount n2 def
+			[ ( cnt=) GlyphCount ] aprintDebug
+			(\n  cov:) aprintMoreVerbose
+			/GlyphArray GlyphCount { idxtbl } moreverbose
+			% create inverse table
+			/CoverageLookup << GlyphArray {
+				exch 1 index get exch
+			} for-array >> def
+		} { CoverageFormat 2 eq {
+			/RangeCount n2 def
+			[ ( cnt=) RangeCount ] aprintDebug
+			/CoverageLookup << RangeCount {
+				/Start n2 def
+				[ (\n  cov: start=) Start ] aprintVerbose
+				/End n2 def
+				[ ( end=) End ] aprintVerbose
+				/StartCoverageIndex n2 def
+				[ ( idx=) StartCoverageIndex ] aprintVerbose
+				(\n    ->) aprintMoreVerbose
+				Start 1 End {
+					dup StartCoverageIndex add Start sub
+					[ ( ) 3 index ] aprintMoreVerbose
+				} for
+			} repeat >> def
+		} {
+			/ttfcov-fmt1 trap
+		} ifelse } ifelse
+	} retr
 	end
 } bind def
 
 % ttfdict <ttfReadGSUBTable> ttfdict gsubdict
 /ttfReadGSUBTable {
-	/GSUB ttfPrepareTable {
-		begin
-			b4 { /ttfGSUB-ver0 trap } if
-			str2num /Version exch def
-			{ ( ver=) print Version ttfPrintVersion } ttfprocDebug
-			Version 16#00010000 lt { /ttfvhea-ver1 trap } if
-			b2 { /ttfGSUB-scriptoff trap } if
-			str2num Offset add /ScriptList exch def
-			[ ( script=) ScriptList ] aprintDebug
-			b2 { /ttfGSUB-featureoff trap } if
-			str2num Offset add /FeatureList exch def
-			[ ( feature=) FeatureList ] aprintDebug
-			b2 { /ttfGSUB-lookupoff trap } if
-			str2num Offset add /LookupList exch def
-			[ ( lookup=) LookupList ] aprintDebug
-			(\n) aprintDebug
-		currentdict end
-	end } if
+	dup begin
+	OffsetTable /GSUB {
+		<00010000> ckver
+		/ScriptList off2 def
+		[ ( script=) ScriptList ] aprintDebug
+		/FeatureList off2 def
+		[ ( feature=) FeatureList ] aprintDebug
+		/LookupList off2 def
+		[ ( lookup=) LookupList ] aprintDebug
+	} retr
+	end
+} bind def
+
+% substdict begin gid <ttfGSUBType1Subst*Lookup> gid' bool
+/ttfGSUBType1Subst1Lookup {
+	Coverage begin
+	CoverageLookup 1 index known {
+		DeltaGlyphID add 16#ffff and
+		true
+	} {
+		false
+	} ifelse
+	end
+} bind def
+
+/ttfGSUBType1Subst2Lookup {
+	Coverage begin
+	CoverageLookup 1 index known {
+		CoverageLookup exch get
+		Substitute exch get
+		true
+	} {
+		false
+	} ifelse
+	end
+} bind def
+
+% ttf subtblarray subtblidx <ttfReadGSUBLookupSubTable> ttf substdict
+/ttfReadGSUBLookupType1SubTable {
+	2 index begin
+	(GSUB LookupType 1 SubTable ) aprintDebug
+	{
+		/SubstFormat n2 def
+		[ ( fmt=) SubstFormat ] aprintDebug
+		SubstFormat 1 eq {
+			/Coverage off2 def
+			[ ( cov=) Coverage ] aprintDebug
+			/DeltaGlyphID n2 def
+			[ ( delta=) DeltaGlyphID ] aprintDebug
+			/Lookup /ttfGSUBType1Subst1Lookup load def
+		} { SubstFormat 2 eq {
+			/Coverage off2 def
+			[ ( cov=) Coverage ] aprintDebug
+			/GlyphCount n2 def
+			[ ( cnt=) GlyphCount ] aprintDebug
+			(\n  gids for substitute:) aprintMoreVerbose
+			/Substitute GlyphCount { idxtbl } moreverbose
+			/Lookup /ttfGSUBType1Subst2Lookup load def
+		} {
+			/ttf-gsub-subtbl trap
+		} ifelse } ifelse
+	} retr
+	% read coverage
+	/Coverage ttfReadCoverageTable pop
+	end
+} bind def
+
+% ttf lutdict <ttfReadGSUBLookupSubTable> ttf lutdict substarray
+/ttfReadGSUBLookupSubTable {
+	1 index begin
+	dup /LookupType get 1 eq {
+		dup /SubTable get dup length array dup
+		{	% ttf lutdict SubTable array array index
+			5 index 4 index 2 index ttfReadGSUBLookupType1SubTable
+			% ttf lutdict SubTable array array index ttf substdict
+			exch pop put
+		} for-array
+		% ttf lutdict SubTable array
+		exch pop
+	} {
+		/ttf-gsub-lookuptype trap
+	} ifelse
+	end
 } bind def
 
 % ttfdict scriptid langid featureid <ttfFindGSUBTable>
-%	ttfdict comtbl fturpair true
+%	ttfdict ftrrec ftridx true
 %	ttfdict false
 /ttfFindGSUBTable {
 	3 dict begin
@@ -1149,239 +1085,89 @@ currentdict /decodeUTF8Limit undef
 	/ttf 1 index def
 	/got false def
 	1 {
-		ttf /GSUB known not { exit } if
-		ttfReadGSUBTable	% ttfdict gsubdict
-		ttfReadFeatureList /FeatureRecord get /fturrec exch def
-		% ttfdict gsubdict
-		ttfReadScriptList	% ttfdict gsubdict scrlstdict
-		dup /ScriptRecord get script known not { pop pop exit } if
-		script ttfReadScriptTable /scrtbl exch def	% ttfdict gsubdict
+		/GSUB ttfCheckSupport not { (no GSUB table\n) aprintVerbose exit } if
+		ttfReadGSUBTable /gsub exch def
+		gsub ttfReadScriptList /scrlst exch def
+		gsub ttfReadFeatureList /ftrrec exch def pop
+		scrlst script known not {
+			[ (no ) script (Script\n) ] aprintVerbose exit
+		} if
+		scrlst script ttfReadScriptTable /scrtbl exch def
 		[ lang /default ] {
 			/id exch def
-			scrtbl /LangSysRecord get id known {
-				% ttfdict gsubdict
-				scrtbl id ttfReadLangSysTable /FeatureIndex get {
-					% ttfdict gsubdict fturidx
-					fturrec exch get dup 0 get feature eq {
-						% ttfdict gsubdict fturpair
-						/got true def exit
+			scrtbl id known {
+				scrtbl id ttfReadLangSysTable
+				(Enumerate FeatureIndex:) aprintVerbose
+				/FeatureIndex get {
+					[ (\n  fidx=) 2 index ] aprintVerbose
+					ftrrec 1 index get /Tag get
+					[ ( tag=) 2 index ] aprintVerbose
+					feature eq {
+						/ftridx exch def
+						/got true def
+						(, found\n) aprintVerbose
+						exit
 					} if
 					pop
 				} forall
-				% ttfdict gsubdict ( | fturpair )
-			} if
+			} {
+				[ (LangSysTable ) id ( is not found.\n) ] aprintVerbose
+			} ifelse
 			got { exit } if
 		} forall
-		got { exit if } if
-		pop
+		got { exit } if
 	} repeat
-	got
+	got { ftrrec ftridx true } { false } ifelse
 	end
 } bind def
 
-% file offset <ttfReadCoverageTable> dict
-%	dict: glyphid to coverage index
-/ttfReadCoverageTable {
-	1 dict begin
-	/offset exch def
-	/f exch def
-	/b2 f 2 bindfilebuffer def
-	[ (coverage: off=) offset ] aprintDebug
-	f offset setfileposition
-	b2 { /ttfcov-fmt0 trap } if
-	str2num /format exch def
-	[ ( fmt=) format ] aprintDebug
-	format 1 eq {
-		b2 { /ttfcov-fmt1a trap } if
-		str2num /gcnt exch def
-		[ ( cnt=) gcnt ] aprintDebug
-		(\n  cov:) aprintMoreVerbose
-		<< 0 1 gcnt 1 sub {
-			b2 { /ttfcov-fmt1b trap } if
-			str2num exch
-			[ ( ) 3 index ] aprintMoreVerbose
-		} for >>
-		(\n) aprintDebug
-	} { format 2 eq {
-		b2 { /ttfcov-fmt2a trap } if
-		str2num /rcnt exch def
-		[ ( cnt=) rcnt ] aprintDebug
-		<< rcnt {
-			b2 { /ttfcov-fmt2b trap } if
-			str2num /startgid exch def
-			b2 { /ttfcov-fmt2c trap } if
-			str2num /endgid exch def
-			b2 { /ttfcov-fmt2d trap } if
-			str2num /startcov exch def
-			[ (\n  cov: start=) startgid ( end=) endgid ( idx=) startcov ]
-			aprintVerbose
-			(\n    ->) aprintMoreVerbose
-			startgid 1 endgid {
-				dup startcov add startgid sub
-				[ ( ) 3 index ] aprintMoreVerbose
-			} for
-		} repeat >>
-		(\n) aprintDebug
-	} {
-		/ttfcov-fmt1 trap
-	} ifelse } ifelse
-	end
-} bind def
-
-% ttfdict gsubdict lutdict <ttfReadGSUBLookupSubTable> ttfdict gsubdict dict
-%	gsub-subst-dict:
-%		SubstFormat: substitution format
-%		Coverage: coverage table dict. key=gid, value=covidx
-%		destination gid is:
-%		SubstFormat 1:
-%			lookup Coverage by gid in qurey, add DeltaGlyphID to the original.
-%		SubstFormat 2:
-%			lookup Coverage by gid in query, lookup Substitute by the result.
-/ttfReadGSUBLookupSubTable {
-	1 dict begin
-	/lu exch def
-	/gsub 1 index def
-	/ttf 2 index def
-	lu /LookupType get 1 eq {
-		(gsub-lutsub: type=1) aprintDebug
-		lu /SubTable get {
-			2 copy get dup type /integertype eq {
-				/f ttf /File get def
-				/b2 f 2 bindfilebuffer def
-				1 dict begin
-					/Offset exch def
-					[ ( off=) Offset ] aprintDebug
-					f Offset setfileposition
-					currentdict put
-					b2 { /ttfgsublutsub-substtype trap } if
-					str2num /SubstFormat exch def
-					[ ( fmt=) SubstFormat ] aprintDebug
-					SubstFormat 1 eq {
-						b2 { /ttfgsublutsub1-cov trap } if
-						str2num Offset add /Coverage exch def
-						[ ( cov=) Coverage ] aprintDebug
-						b2 { /ttfgsublutsub1-delta trap } if
-						str2num /DeltaGlyphID exch def
-						[ ( delta=) DeltaGlyphID (\n) ] aprintDebug
-					} { SubstFormat 2 eq {
-						b2 { /ttfgsublutsub1-cov trap } if
-						str2num Offset add /Coverage exch def
-						[ ( cov=) Coverage ] aprintDebug
-						b2 { /ttfgsublutsub1-gcnt trap } if
-						str2num /GlyphCount exch def
-						[ ( cnt=) GlyphCount ] aprintDebug
-						(\n  subst:) aprintMoreVerbose
-						/Substitute [ GlyphCount {
-							b2 { /ttfgsublutsub1-gcnt trap } if
-							str2num [ ( ) 2 index ] aprintMoreVerbose
-						} repeat ] def
-						(\n) aprintDebug
-					} {
-						/ttfgsublutsub-subfmt trap
-					} ifelse } ifelse
-					f Coverage ttfReadCoverageTable
-					/Coverage exch def
-					currentdict GlyphCount known {
-						Coverage length GlyphCount ne {
-							/ttfgsublutsub-covcnt trap
-						} if
-					} if
-
-					% bind parameter to Lookup procedure
-					SubstFormat 1 eq {
-						/Lookup [
-							DeltaGlyphID Coverage {
-								2 index known {
-									add 16#ffff and true
-								} {
-									pop false
-								} ifelse
-							} /exec cvx
-						] cvx bind def
-					} { SubstFormat 2 eq {
-						/Lookup [
-							Substitute Coverage {
-								dup 3 index known {
-									2 index get get exch pop true
-								} {
-									pop pop false
-								} ifelse
-							} /exec cvx
-						] cvx bind def
-					} {
-						/ttfgsublutsub-subfmt2 trap
-					} ifelse } ifelse
-				currentdict end
-			} {
-				3 -2 roll pop pop
-			} ifelse
-		} for-array
-	} {
-		/ttfgsublutsub-luttype trap
-	} ifelse
-	end
-} bind def
-
-% ttfdict <ttfCloseFontFile> -
-/ttfCloseFontFile {
-	begin
-	File type /filetype eq {
-		(ttfCloseFontFile: closing file\n) aprintDebug
-		File closefile
-		/File null def
-	} if
-	end
-} bind def
-
-% ttfdict scptid langid fturid <ttfGetGSUBTable>
-%	ttfdict arrayofsubstdict true |
+% ttfdict scptid langid fturid <ttfGetGSUBTable> ttfdict arrayofarray true
 %	ttfdict false
 /ttfGetGSUBTable {
 	ttfFindGSUBTable {
-		% ttfdict gsubdict fturpair
 		1 dict begin
-		/ttf 3 index def
-		ttfReadFeatureTable
-		/fturdict exch def
-		ttfReadLookupListTable
-		/ludict exch def
-		[ 3 -2 roll
-		fturdict /LookupListIndex get {
-			% ... ttfdict gsubdict luidx
-			ttfReadLookupTable
-			% ... ttfdict gsubdict lutdict
+		ttfReadFeatureTable	/lutidx exch def pop
+		ttfReadGSUBTable
+		ttfReadLookupList /lutlst exch def pop
+		lutidx length array dup {
+			3 index lutlst lutidx 3 index get ttfReadLookupTable
 			ttfReadGSUBLookupSubTable
-			% ... ttfdict gsubdict substdict
-			3 -2 roll
-			% ... substdict ttfdict gsubdict
-		} forall
-		% [ substdict ... ttfdict gsubdict
-		pop pop ] ttf exch true
+			3 -2 roll pop pop put
+		} for-array
+		true
 		end
 	} {
 		false
 	} ifelse
 } bind def
 
-% source dest id
-/gatherLUT {
-	/id exch def
-	/dest exch def
-	begin
-	1 dict begin
-	Coverage {
-		pop dup Lookup {
-			/dstgid exch def
-			/srcgid exch def
-			dest srcgid known not {
-				dest srcgid [ ] put
-			} if
-			dest srcgid get aload [ id dstgid ] exch
-			length 1 add array astore
-			dest exch srcgid exch put
-		} { pop pop } ifelse
-	} forall
-	end end
+% gid [ [ substdict ... ] ... ] ttfLookupGlyph gid' bool
+/ttfLookupGlyph {
+	dup type /dicttype eq {
+		begin Lookup end
+	} {
+		{
+			ttfLookupGlyph { exit } if
+		} forall
+	} ifelse
+} bind def
+
+% dict substarray <mergeCoverage> dict
+/mergeCoverage {
+	dup type /dicttype eq {
+		begin
+		Coverage /CoverageLookup get {
+			pop 2 copy known {
+				pop
+			} {
+				dup Lookup
+				{ 2 index 3 -2 roll put } { pop pop } ifelse
+			} ifelse
+		} forall
+		end
+	} {
+		{ mergeCoverage } forall
+	} ifelse
 } bind def
 
 [ /MS-PGothic /IPAexMincho /DFPKaiSho-Md ] {
@@ -1389,17 +1175,27 @@ currentdict /decodeUTF8Limit undef
 	/CIDFont findresource ttfFindFontTable
 	not { /ttf-notfound trap } if
 	ttfReadHmtxTable pop
-	dup /vmtx known { ttfReadVmtxTable pop } if
-	/dest 1 dict def
-	/kana (JAN ) /vert ttfGetGSUBTable {
-		{ dest /kana gatherLUT } forall
-	} if
-	/hani (JAN ) /vert ttfGetGSUBTable {
-		{ dest /hani gatherLUT } forall
-	} if
-	dest {
-		exch aprint ( ) aprint ==
-	} forall
+	/vmtx ttfCheckSupport { ttfReadVmtxTable pop } if
+	[
+		[ /kana (JAN ) /vert ]
+		[ /hani (JAN ) /vert ]
+	]
+	dup length array dup {
+		% ttfdict array array' array' index
+		4 index 4 index 2 index get aload pop ttfGetGSUBTable
+		{
+			% ttfdict array array' array' index ttfdict gsub
+			exch pop put
+		} {
+			% ttfdict array array' array' index ttfdict
+			pop pop pop
+		} ifelse
+	} for-array
+	exch pop
+	1 dict exch mergeCoverage
+	{ exch aprint ( -> ) print aprint (\n) print } forall
 	ttfCloseFontFile
 } forall
+/end dstack
+[ (dictstack depth: ) countdictstack (\n) ] aprint
 quit
