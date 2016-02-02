@@ -1,7 +1,7 @@
 %!
 
 /ttfprocDebug { exec } def
-/ttfprocVerbose { exec } def
+/ttfprocVerbose { pop } def
 /ttfprocMoreVerbose { pop } def
 /aprintDebug { ttfprocDebug { aprint flush } ttfprocDebug } def
 /aprintVerbose { ttfprocVerbose { aprint flush } ttfprocVerbose } def
@@ -23,6 +23,15 @@
 % knownget has same functionality as .knownget in GS.
 /knownget {
 	2 copy known { get true } { pop pop false } ifelse
+} bind def
+
+% <key> <default> defaultload <value>
+/defaultload {
+	exch dup where {
+		exch get exch pop
+	} {
+		pop
+	} ifelse
 } bind def
 
 % proc <protected-exec> -
@@ -204,20 +213,20 @@
 	/str strbufCreate def
 	/s 1 string def
 
-	% ïÑçÜ
+	% …‰πÊ
 	val 0 lt {
 		str (-) strbufAppend
 		/val val abs def
 	} if
 
-	% ä€ÇﬂÇƒÇ®Ç≠
+	% ¥›§·§∆§™§Ø
 	/val val 10 prec neg exp 0.5 mul add def
 
-	% êÆêîïîÇ∆è¨êîïîÇ…ï™ÇØÇÈ
+	% ¿∞øÙ…Ù§»æÆøÙ…Ù§À ¨§±§Î
 	/ipart val floor def
 	/fpart val ipart sub def
 
-	% êÆêîïîÇ256êiï\åªÇ…Ç∑ÇÈÅB
+	% ¿∞øÙ…Ù§Ú256ø …Ω∏Ω§À§π§Î°£
 	/n 0 def
 	{
 		ipart 1 lt { exit } if
@@ -229,23 +238,23 @@
 		256 mul dup floor cvi exch 1 index sub
 	} repeat pop ] def
 
-	% â∫à åÖÇ©ÇÁ10êiï™âÇ∑ÇÈÅB
+	% ≤º∞Ã∑Â§´§È10ø  ¨≤Ú§π§Î°£
 	mark {
 		ipart length 0 eq { exit } if
 		ipart aprint-longval-divmod10 exch /ipart exch def
 	} loop
 
-	% ï∂éöóÒÇ…íºÇ∑
+	%  ∏ª˙ŒÛ§Àƒæ§π
 	{
 		dup mark eq { exit } if
 		s cvs str exch strbufAppend
 	} loop
 	pop
 
-	% ãÛÇ¡Ç€Ç»ÇÁ0Çí«â¡
+	% ∂ı§√§›§ §È0§Úƒ…≤√
 	str strbufLength 0 eq { str (0) strbufAppend } if
 
-	% è¨êîïî
+	% æÆøÙ…Ù
 	str (.) strbufAppend
 	fpart prec {
 		10 mul dup floor dup cvi s cvs
@@ -512,12 +521,12 @@ currentdict /decodeUTF8Limit undef
 	end
 } bind def
 
-% strarray pos size  <getstrarray> substr true
+% strarray pos size <getstrarray> substr true
 % strarray pos size <getstrarray> false
 /getstrarray {
 	4 dict begin
 	/sz exch def
-	/pos exch def
+	sz mul /pos exch def
 	/got false def
 	{
 		/s exch def
@@ -532,7 +541,7 @@ currentdict /decodeUTF8Limit undef
 	end
 } bind def
 
-% proc <moveverbose> -
+% proc <moreverbose> -
 /moreverbose {
 	1 dict begin
 	/CurrentVerbose /ttfprocVerbose load def
@@ -554,6 +563,7 @@ currentdict /decodeUTF8Limit undef
 /n2 { b2 str2num } bind def
 /n4 { b4 str2num } bind def
 /off2 { n2 Offset add } bind def
+/off4 { n4 Offset add } bind def
 /setpos { FontFile exch setfileposition } bind def
 /fwd { FontFile fileposition add setpos } bind def
 
@@ -804,7 +814,7 @@ currentdict end
 	end
 } bind def
 
-% ttfdict id <ttfCheckSupport> ttfdict
+% ttfdict id <ttfCheckSupport> ttfdict bool
 /ttfCheckSupport {
 	1 index /OffsetTable get exch known
 } bind def
@@ -838,6 +848,102 @@ currentdict end
 	} retr pop
 	end
 } bind def
+
+% ttfdict <ttfReadOS2Table> ttfdict
+/ttfReadOS2Table {
+	ttfReadHeadTable
+	dup begin
+	OffsetTable (OS/2) cvn {
+		68 fwd
+		dup begin
+			/TypoAscender n2 UnitsPerEm div def
+			[ ( typoasnd=) TypoAscender ] aprintDebug
+		end
+	} retr pop
+	end
+} bind def
+
+{ %========== these are unused ==========
+
+% ttf <ttfReadCmapTable> ttf cmapdict
+/ttfReadCmapTable {
+	dup begin
+	OffsetTable /cmap {
+		/Version n2 def
+		[ ( ver=) Version ] aprintDebug
+		/NumTables n2 def
+		[ ( cnt=) NumTables ] aprintDebug
+		/Encoding NumTables array def
+		Encoding {
+			<<
+			/PlatformID n2 [ (\n  pf=) 2 index ] aprintDebug
+			/EncodingID n2 [ ( enc=) 2 index ] aprintDebug
+			/Offset off4 [ ( off=) 2 index ] aprintDebug
+			>> put
+		} for-array
+	} retr
+	end
+} bind def
+
+% ttf pf enc <ttfCheckCmapTable> ttf ( cmaparray idx true ) | false
+/ttfCheckCmapTable {
+	1 dict begin
+	/enc exch def
+	/pf exch def
+	/got false def
+	ttfReadCmapTable /Encoding get {
+		2 copy get begin
+		PlatformID pf eq EncodingID enc eq and
+		end
+		{ /got true def exit } if
+		pop pop
+	} for-array
+	got
+	end
+} bind def
+
+% ttf <ttfReadCmapSubtableFormat12> ttf
+%	 use currentdict as cmapdict.
+/ttfReadCmapSubtableFormat12 {
+	10 fwd
+	/NumGroups n4 def
+	[ ( cnt=) NumGroups ] aprintDebug
+	1 dict begin
+	NumGroups {
+		n4 [ (\n  0x) << /A (0) /W 5 /R 16 >> 3 index ] aprintVerbose
+		n4 [ ( ... 0x) << /A (0) /W 5 /R 16 >> 3 index ] aprintVerbose
+		n4 [ ( -> ) 2 index ] aprintVerbose
+		2 index 1 3 index {
+			[ (\n    0x) << /A (0) /W 5 /R 16 >> 3 index ] aprintMoreVerbose
+			1 index [ ( -> ) 2 index ] aprintMoreVerbose
+			def
+			1 add
+		} for
+		pop pop pop
+	} repeat
+	currentdict end /CharToGlyphMap exch def
+} bind def
+
+% ttf cmaparray idx <ttfReadCmapSubtable> ttf cmapdict
+/ttfReadCmapSubtable {
+	2 index begin
+	(cmap subtable ) aprintDebug
+	{
+		/Format n2 def
+		[ ( fmt=) Format ] aprintDebug
+		1 {
+			Format 12 eq {
+				ttfReadCmapSubtableFormat12
+				exit
+			} if
+			/ttf-cmap-format trap
+		} repeat
+	} retr
+	end
+	quit
+} bind def
+
+} pop %========== end of unused portion ==========
 
 % ttfdict <ttfReadHheaTable> ttfdict hheadict
 /ttfReadHheaTable {
@@ -1227,7 +1333,7 @@ currentdict end
 		} forall
 		end
 	} {
-		{ mergeCoverage } forall
+		{ ttfMergeCoverage } forall
 	} ifelse
 } bind def
 
@@ -1268,15 +1374,14 @@ false setglobal
 		File cvx protected-exec
 		File closefile
 		CodeMap begin
-			BaseCMaps aload length 1 add array
-			cmaplist BaseCMapName get
-			exch astore /BaseCMaps exch def
+			[ cmaplist BaseCMapName get BaseCMaps aload pop ]
+			/BaseCMaps exch def
 		end
 	end
 } /exec cvx ] cvx bind def
 
 /begincodespacerange {
-	(begincodespacerange\n) aprintVerbose
+	(begincodespacerange ... ) aprintVerbose
 	mark
 } bind def
 
@@ -1286,7 +1391,7 @@ false setglobal
 } bind def
 
 /beginnotdefrange {
-	(beginnotdefrange\n) aprintVerbose
+	(beginnotdefrange ... ) aprintVerbose
 	mark
 } bind def
 
@@ -1345,15 +1450,17 @@ false setglobal
 		[ (  ) << /S /hex >> 3 index 0 get << /S /char >> ( ... )
 			<< /S /hex >> 7 index 1 get << /S /char >> ( -> )
 			10 index 2 get (\n) ] aprintVerbose
-		dup 0 get length string 1 index 2 get
+		dup 0 get length 1 index 2 get
 		2 index 0 get str2num 1 4 index 1 get str2num {
-			2 index num2str
+			2 index string num2str
 			ForwardCMap
 				1 index [ (    ) << /S /hex >> 3 index ] aprintMoreVerbose
 				3 index [ ( -> ) 2 index (\n) ] aprintMoreVerbose
-				append2dict
+				put
 			ReverseCMap 2 index 2 index append2dict
-			pop 1 add
+			% workaround for GS
+			3 index 1 get eq { exit } if
+			1 add
 		} for
 		pop pop pop
 	} repeat-count
@@ -1397,12 +1504,89 @@ exch setglobal
 	currentdict end
 } bind def
 
-% font cmap <ttfVerticalFixupInfo> font'
-/ttfVerticalFixupInfo {
+% cidmap copyCIDMap cidmap'
+% currentdict is used as font.
+/copyCIDMap {
+	dup type /arraytype eq {
+		[ exch { dup length string copy } forall ]
+	} {
+		dup length string copy
+	} ifelse
+} bind def
+
+% cmap cid <ttfCheckReverseCMap> bool
+/ttfCheckReverseCMap {
+	2 dict begin
+	/cid exch def
+	/CodeMap get /codemap exch def
+	codemap /ReverseCMap get cid known {
+		true
+	} {
+		false codemap /BaseCMaps get {
+			cid ttfCheckReverseCMap { pop true exit } if
+		} forall
+	} ifelse
+	end
+} bind def
+
+% cmap str <ttfLookupForwardCMap> ( cid true | false )
+/ttfLookupForwardCMap {
+	2 dict begin
+	/str exch def
+	/CodeMap get /codemap exch def
+	codemap /ForwardCMap get dup str known {
+		str get true
+	} {
+		pop
+		false codemap /BaseCMaps get {
+			str ttfCheckReverseCMap { exch pop true exit } if
+		} forall
+	} ifelse
+	end
+} bind def
+
+% ttf featuretable <ttfGetGSUBSubstDict> dict
+/ttfGetGSUBSubstDict {
+	1 dict begin
+	/features exch def
+	/ttfdict exch def
+	[ ttfdict features {
+		aload pop ttfGetGSUBTable {
+			exch
+		} if
+	} forall pop ]
+	1 dict exch ttfMergeCoverage
+	{
+		dup { exch aprint ( -> ) print aprint (\n) print } forall
+	} ttfprocMoreVerbose
+	end
+} bind def
+
+% font cmap <ttfVerticalFixupCIDFont> font'
+/ttfVerticalFixupCIDFont {
 	1 dict begin
 
 	dup type /dicttype eq { /CMapName get } if
 	/cmapname exch def
+	dup type /dicttype ne {
+		/fontname exch def
+		fontname /CIDFont findresource
+	} {
+		dup /CIDFontName get /fontname exch def
+	} ifelse
+	/cidfont exch def
+
+	currentglobal
+	false setglobal
+
+	cidfont ttfFindFontTable not { /ttf-notfound trap } if
+	/ttfdict exch def
+	ttfdict [
+		[ /kana (JAN ) /vert ]
+		[ /hani (JAN ) /vert ]
+	] ttfGetGSUBSubstDict
+	/vertsubst exch def
+
 	/CMap /Category findresource
 	begin cmapname 256 string ResourceFileName end
 	[ (getting filename for ) cmapname (: ) 4 index (\n) ] aprintDebug
@@ -1410,65 +1594,216 @@ exch setglobal
 	/cmaplist ttfDefineCIDInitProcSet /CMapList get def
 	exec closefile
 
-	(--- Forward CMAP ---\n) print
-	cmaplist cmapname get /CodeMap get /ForwardCMap get {
-		[ << /S /hex >> 3 index ] aprint
-		[ ( ) 2 index (\n) ] aprint
-		pop pop
-	} forall
+	cidfont copyfont begin
+	currentdict /subst_CID_on_WMode undef
+	/FontType 42 def
+	/DEVICE /defaultdevice defaultload /pdfwrite ne {
+		/CIDSystemInfo <<
+			/Registry (Artifex)
+			/Ordering (Identity)
+			/Supplement 0
+		>> readonly def
+	} if
 
-	(--- Reverse CMAP ---\n) print
-	cmaplist cmapname get /CodeMap get /ReverseCMap get {
-		[ << /W 5 >> 3 index ] aprint
-		[ ( ) << /S /hex >> 3 index ] aprint
-		(\n) print
-		pop pop
-	} forall
+	(Fixup CIDMap for vertical writing mode ... ) aprintDebug
+	/CIDMap CIDMap copyCIDMap def
 
-	(--- Base CMAP ---\n) print
-	cmaplist cmapname get /CodeMap get /BaseCMaps get 0 get
-	/CodeMap get /ForwardCMap get {
-		[ << /S /hex /W 6 /A /left >> 3 index ] aprint
-		[ << /W 6 >> 2 index (\n) ] aprint
-		pop pop
-	} forall
+	1 dict begin	% vertical-subst
+	/vcodemap cmaplist cmapname get /CodeMap get def
+	1 {
+		/basecmap vcodemap /BaseCMaps get def
+		basecmap length 1 gt {
+			/ttfvert-toomanybasecmaps trap
+		} if
+		basecmap length 1 ne {
+			(no base cmap) aprintDebug exit
+		} if
+		/hcmap basecmap 0 get def
+
+		/replace 1 dict def
+		vcodemap /ForwardCMap get {
+			/vcid exch def
+			/mapchar exch def
+			[ (\n  ) << /S /hex >> mapchar ] aprintVerbose
+			[ << /W 5 >> vcid ] aprintVerbose
+			1 {
+				hcmap mapchar ttfLookupForwardCMap not {
+					(no horizchar) aprintVerbose exit
+				} if
+				/hcid exch def
+				[ (: hcid=) << /W 6 /A /left >> hcid ] aprintVerbose
+
+				CIDMap hcid GDBytes getstrarray not {
+					(no glyph) aprintVerbose exit
+				} if
+				str2num /hgid exch def
+				[ (hgid=) << /W 6 /A /left >> hgid ] aprintVerbose
+
+				vertsubst hgid known not {
+					(no subst) aprintVerbose exit
+				} if
+				/vgid vertsubst hgid get def
+				[ (vgid=) << /W 6 /A /left >> vgid ] aprintVerbose
+
+				% vgid may become source of vertsubst or not?
+				vertsubst vgid known {
+					(shared) aprintVerbose exit
+				} if
+
+				CIDMap vcid GDBytes getstrarray not {
+					(no gid in cidmap) aprintVerbose exit
+				} if
+				[ (\(orig=) 2 index str2num (\))] aprintVerbose
+				pop
+
+				replace vcid known {
+					replace vcid get vgid ne {
+						[ (\n\033[1mWARNING: CID ) vcid ( is bound to GID )
+						  replace vcid get ( and ) vgid (.\033[m) ] aprintDebug
+					} if
+					exit
+				} if
+				replace vcid vgid put
+			} repeat
+		} forall
+		replace {
+			exch CIDMap exch GDBytes getstrarray {
+				num2str pop
+			} {
+				/ttfproc-CIDMap-replace trap
+			} ifelse
+		} forall
+	} repeat
+	(\n) aprintVerbose
+	(done.\n) aprintDebug
+
+	% Metrics2
+	%	CID -> [ wx1 wy1 vx vy ]
+	% Enumerate Horizontal and Vertical Reverse CMaps.
+	% Lookup modified CIDMap to get glyph ID.
+	% Lookup wy1 for vmtx table, vx for half of hmtx table.
+	% vy is the ascent from OS/2 table.
+	ttfdict /vmtx ttfCheckSupport {
+		ttfReadOS2Table
+		ttfReadHmtxTable /hmtx exch def
+		ttfReadVmtxTable /vmtx exch def
+		/TypoAscender get /vy exch def
+		/hw hmtx /AdvanceDistance get def	% horizontal width
+		/hwmax hw length 1 sub def
+		/vw vmtx /AdvanceDistance get def	% vertical width
+		/vwmax vw length 1 sub def
+		1 dict begin	% Metrics2
+		[ hcmap /CodeMap get /ReverseCMap get
+			vcodemap /ReverseCMap get ] { {
+			pop
+			[ << /W 7 >> 2 index ] aprintMoreVerbose
+			CIDMap 1 index GDBytes getstrarray {
+				str2num
+				[ (: gid=) << /A /left /W 5 >> 3 index ] aprintMoreVerbose
+				[	0	% wx1
+					[ ( wx1=) 2 index ] aprintMoreVerbose
+					vw 3 index dup vwmax ge { pop vwmax } if get neg
+					[ ( wy1=) 2 index ] aprintMoreVerbose
+					hw 4 index dup hwmax ge { pop hwmax } if get 0.5 mul
+					[ ( vx=) 2 index ] aprintMoreVerbose
+					vy
+					[ ( vy=) 2 index ] aprintMoreVerbose
+				] exch pop def
+			} {
+				pop (: no glyph) aprintMoreVerbose
+			} ifelse
+			(\n) aprintMoreVerbose
+		} forall } forall
+
+		% cid 1 and 231 is half width space.
+		% change height to its width in case of vertical writing.
+		% vx in the array of Metrics2 element hold half of charwidth.
+		[ 1 231 ] {
+			currentdict 1 index known {
+				load dup 2 get -2 mul 1 exch put
+			} {
+				pop
+			} ifelse
+		} forall
+
+		currentdict end	% Metrics2
+	} {
+		pop
+	} ifelse
+
+	ttfdict ttfCloseFontFile
+
+	end	% vertical-subst
+
+	/Metrics2 exch def
+
+	currentdict end
+	fontname exch /CIDFont defineresource
 
 	ttfUndefineCIDInitProcSet
-
-	pop
+	exch setglobal
 
 	end
 } bind def
 
-/hoge /90ms-RKSJ-V ttfVerticalFixupInfo
-quit
+% test code
+{
+	/encodings [
+		<<
+			/HCmap /90ms-RKSJ-H
+			/VCmap /90ms-RKSJ-V
+			/Arrows <81aa81ab81a981a8>
+			/Katakana <8175834c8383836283608383815b81498176>
+			/Ansi (abc)
+			/PuncSpace <816d20816e816d8140816e>
+		>>
+		<<
+			/HCmap /EUC-H
+			/VCmap /EUC-V
+			/Arrows <a2aca2ada2aba2aa>
+			/Katakana <a1d6a5ada5e3a5c3a5c1a5e3a1bca1aaa1d7>
+			/Ansi (abc)
+			/PuncSpace <a1ce20a1cfa1cea1a1a1cf>
+		>>
+		<<
+			/HCmap /UniJIS-UTF16-H
+			/VCmap /UniJIS-UTF16-V
+			/Arrows <2191219321902192>
+			/Katakana <300c30ad30e330c330c130e330fcff01300d>
+			/Ansi <006100620063>
+			/PuncSpace <ff3b0020ff3dff3b3000ff3d>
+		>>
+	] def
+	/fonts [ /MS-PGothic /IPAexMincho /DFPKaiSho-Md ] def
 
-[ /MS-PGothic /IPAexMincho /DFPKaiSho-Md ] {
-	(-----------------------------------------------------------------\n) print
-	/CIDFont findresource ttfFindFontTable
-	not { /ttf-notfound trap } if
-	ttfReadHmtxTable pop
-	/vmtx ttfCheckSupport { ttfReadVmtxTable pop } if
-	[
-		[ /kana (JAN ) /vert ]
-		[ /hani (JAN ) /vert ]
-	]
-	dup length array dup {
-		% ttfdict array array' array' index
-		4 index 4 index 2 index get aload pop ttfGetGSUBTable
-		{
-			% ttfdict array array' array' index ttfdict gsub
-			exch pop put
-		} {
-			% ttfdict array array' array' index ttfdict
-			pop pop pop
-		} ifelse
-	} for-array
-	exch pop
-	1 dict exch mergeCoverage
-	{ exch aprint ( -> ) print aprint (\n) print } forall
-	ttfCloseFontFile
-} forall
-/end dstack
-[ (dictstack depth: ) countdictstack (\n) ] aprint
-quit
+	fonts {
+		/f exch def
+		encodings {
+			begin
+			(---------------------------------------------------------\n) print
+			24 24 scale
+			0 33 translate
+
+			f VCmap ttfVerticalFixupCIDFont pop
+
+			/test-V VCmap [ f ] composefont setfont
+			1 -1 moveto
+			Arrows show
+			Katakana show
+			Ansi show
+			PuncSpace show
+
+			/test-H HCmap [ f ] composefont setfont
+			-0.5 -1.5 rmoveto
+			Arrows show
+			Katakana show
+			Ansi show
+			PuncSpace show
+
+			showpage
+			end
+		} forall
+	} forall
+	/end dstack
+	[ (dictstack depth: ) countdictstack (\n) ] aprint
+} pop
