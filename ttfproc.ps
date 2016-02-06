@@ -98,6 +98,22 @@
 	0 exch { exch 8 bitshift add } forall
 } bind def
 
+% str | name <strdup> str'
+/strdup {
+	dup length string cvs
+} bind def
+
+% str1 str2 <strcat> str'
+/strcat {
+	2 dict begin
+	/str2 exch def
+	/str1 exch def
+	str1 length str2 length add string
+	dup 0 str1 putinterval
+	dup str1 length str2 putinterval
+	end
+} bind def
+
 % num str <num2str> str
 /num2str {
 	1 dict begin
@@ -1557,13 +1573,16 @@ exch setglobal
 	} forall pop ]
 	1 dict exch ttfMergeCoverage
 	{
-		dup { exch aprint ( -> ) print aprint (\n) print } forall
+		dup {
+			exch [ << /W 7 >> 2 index ] aprint pop
+			[ ( -> ) 2 index (\n) ] aprint pop
+		} forall
 	} ttfprocMoreVerbose
 	end
 } bind def
 
-% font cmap <ttfVerticalFixupCIDFont> font'
-/ttfVerticalFixupCIDFont {
+% font cmap <ttfFixupVerticalMode> font'
+/ttfFixupVerticalMode {
 	1 dict begin
 
 	dup type /dicttype eq { /CMapName get } if
@@ -1605,7 +1624,7 @@ exch setglobal
 		>> readonly def
 	} if
 
-	(Fixup CIDMap for vertical writing mode ... ) aprintDebug
+	(fixup CIDMap for vertical writing mode ... ) aprintDebug
 	/CIDMap CIDMap copyCIDMap def
 
 	1 dict begin	% vertical-subst
@@ -1625,13 +1644,13 @@ exch setglobal
 			/vcid exch def
 			/mapchar exch def
 			[ (\n  ) << /S /hex >> mapchar ] aprintVerbose
-			[ << /W 5 >> vcid ] aprintVerbose
+			[ (: vcid=) << /W 6 /A /left >> vcid ] aprintVerbose
 			1 {
 				hcmap mapchar ttfLookupForwardCMap not {
 					(no horizchar) aprintVerbose exit
 				} if
 				/hcid exch def
-				[ (: hcid=) << /W 6 /A /left >> hcid ] aprintVerbose
+				[ (hcid=) << /W 6 /A /left >> hcid ] aprintVerbose
 
 				CIDMap hcid GDBytes getstrarray not {
 					(no glyph) aprintVerbose exit
@@ -1693,13 +1712,14 @@ exch setglobal
 		/vw vmtx /AdvanceDistance get def	% vertical width
 		/vwmax vw length 1 sub def
 		1 dict begin	% Metrics2
+		(creating Metrics2 dict ... ) aprintDebug
 		[ hcmap /CodeMap get /ReverseCMap get
 			vcodemap /ReverseCMap get ] { {
 			pop
-			[ << /W 7 >> 2 index ] aprintMoreVerbose
+			[ (\n  cid=) << /A /left /W 5 >> 3 index ] aprintMoreVerbose
 			CIDMap 1 index GDBytes getstrarray {
 				str2num
-				[ (: gid=) << /A /left /W 5 >> 3 index ] aprintMoreVerbose
+				[ ( gid=) << /A /left /W 5 >> 3 index ] aprintMoreVerbose
 				[	0	% wx1
 					[ ( wx1=) 2 index ] aprintMoreVerbose
 					vw 3 index dup vwmax ge { pop vwmax } if get neg
@@ -1710,10 +1730,11 @@ exch setglobal
 					[ ( vy=) 2 index ] aprintMoreVerbose
 				] exch pop def
 			} {
-				pop (: no glyph) aprintMoreVerbose
+				pop ( no glyph) aprintMoreVerbose
 			} ifelse
-			(\n) aprintMoreVerbose
 		} forall } forall
+		(\n) aprintMoreVerbose
+		(done.\n) aprintDebug
 
 		% cid 1 and 231 is half width space.
 		% change height to its width in case of vertical writing.
@@ -1726,16 +1747,17 @@ exch setglobal
 			} ifelse
 		} forall
 
-		currentdict end	% Metrics2
+		currentdict true end	% Metrics2
 	} {
-		pop
+		(no vmtx table, Metrics2 is not created.\n) aprintDebug
+		pop false
 	} ifelse
 
 	ttfdict ttfCloseFontFile
 
 	end	% vertical-subst
 
-	/Metrics2 exch def
+	{ /Metrics2 exch def } if
 
 	currentdict end
 	fontname exch /CIDFont defineresource
@@ -1746,7 +1768,114 @@ exch setglobal
 	end
 } bind def
 
+% fontname cmapname <ttfComposeVerticalFont> font'
+/ttfComposeVerticalFont {
+	2 dict begin
+	/cmapname exch def
+	/fontname exch def
+	fontname strdup (-) strcat cmapname strdup strcat
+	cmapname [ fontname cmapname ttfFixupVerticalMode ] composefont
+	end
+} bind def
+
+% key value <ckdef> -
+%	check and define. define value as key if key is not defined in currentdict.
+/ckdef {
+	currentdict 2 index known { pop pop } { def } ifelse
+} bind def
+
+% bbox offest ratio
+%	interpolation
+/itp {
+	3 dict begin
+	/r exch def
+	/o exch def
+	/b exch def
+	r null eq { 0 } { b o get 1 r sub mul b o 2 add get r mul add } ifelse
+	end
+} bind def
+
+/bbox {
+	gsave
+	0 setlinewidth
+	currentpoint translate
+	newpath
+	dup 0 get 1 index 1 get moveto
+	dup 2 get 1 index 1 get lineto
+	dup 2 get 1 index 3 get lineto
+	dup 0 get 1 index 3 get lineto
+	closepath stroke
+	pop
+	grestore
+} bind def
+
+% subfont str [ optdict ] <ttfGenericAlignShow> -
+%	PX: primary font alignment, X direction
+%	PY:	same for Y direction
+%	SX: secondary font alignment, X direction
+%	SY: same for Y direction
+/ttfGenericAlignShow {
+	1 dict begin
+	dup type /dicttype eq {
+		{ def } forall
+	} if
+	/s exch def
+	/f exch def
+	/HeightString (fg) ckdef
+	/PX null ckdef
+	/PY null ckdef
+	/SX PX ckdef
+	/SY PY ckdef
+	/NX SX ckdef
+	/NY SY ckdef
+
+	gsave
+	nulldevice
+	256 256 scale
+	0 0 moveto
+	HeightString false charpath flattenpath pathbbox
+	4 array astore /bb1 exch def
+	newpath
+	f setfont
+	0 0 moveto
+	s false charpath flattenpath pathbbox
+	4 array astore /bb2 exch def
+	grestore
+
+	bb1 bbox
+	/dx bb1 0 PX itp def
+	/dy bb1 1 PY itp def
+	dx bb2 0 SX itp sub dy bb2 1 SY itp sub rmoveto
+	gsave
+	gsave 1 0 0 setrgbcolor bb2 bbox grestore
+	currentpoint
+	f setfont s show
+	currentpoint 4 array astore /cp exch def
+	grestore
+	NX null eq { cp 2 get } { cp 0 get bb2 0 NX itp add } ifelse dx sub
+	NY null eq { cp 3 get } { cp 1 get bb2 1 NY itp add } ifelse dy sub moveto
+	end
+} bind def
+
 % test code
+{
+	72 -72 scale
+	0.5 -10.5 translate
+	/vertfont /DFPKaiSho-Md /EUC-V ttfComposeVerticalFont
+	[ 1 0 0 -1 0 0 ] makefont def
+	/subfont /Times-Roman findfont [ 1 0 0 -1 0 0 ] makefont
+%	90 matrix rotate makefont
+	def
+	5 0 moveto
+	vertfont setfont
+	(不死鳥) show
+	gsave 0.05 setlinewidth 1 setlinecap 0 0 rlineto stroke grestore
+	subfont (Akamoz) << /SX 0.5 /SY 0 /NY 1 /HeightString (不死鳥) >> ttfGenericAlignShow
+	gsave 0.05 setlinewidth 1 setlinecap 0 0 rlineto stroke grestore
+	(！) show
+	showpage
+} exec
+
 {
 	/encodings [
 		<<
@@ -1784,7 +1913,7 @@ exch setglobal
 			24 24 scale
 			0 33 translate
 
-			f VCmap ttfVerticalFixupCIDFont pop
+			f VCmap ttfFixupVerticalMode pop
 
 			/test-V VCmap [ f ] composefont setfont
 			1 -1 moveto
