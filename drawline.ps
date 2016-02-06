@@ -25,7 +25,7 @@
 
 /drawline-version (0.1) def
 
-(ttf-vert.ps) runlibfile
+(ttfproc.ps) runlibfile
 
 % <dict> <key> <default> defaultget <value>
 /defaultget {
@@ -64,16 +64,6 @@
 	end
 } bind def
 
-% str num <splitstring> str1 str2
-/splitstring {
-	2 dict begin
-	/n exch def
-	/s exch def
-	s 0 n getinterval
-	s n s length n sub getinterval
-	end
-} bind def
-
 % str <charbytes> num
 /charbytesEUC {
 	0 get 16#80 lt {
@@ -81,23 +71,6 @@
 	} {
 		2
 	} ifelse
-} bind def
-
-/charbytesUTF8 {
-	0 get dup 16#80 lt {
-		1
-	} { dup 16#c0 lt {
-		/charbyteUTF8 trap
-	} { dup 16#e0 lt {
-		2
-	} { dup 16#f0 lt {
-		3
-	} { dup 16#f8 lt {
-		4
-	} {
-		/charbyteUTF8 trap
-	} ifelse } ifelse } ifelse } ifelse } ifelse
-	exch pop
 } bind def
 
 /substtable <<
@@ -120,7 +93,7 @@
 
 % - <extractchar> -
 /extractchar {
-	str dup charbytesproc splitstring /str exch def /c exch def
+	str dup charbytesproc splitstring /c exch def /str exch def
 } bind def
 
 % - <drawline-strlist> ... bool
@@ -294,28 +267,29 @@
 				gsave matrix currentmatrix nulldevice setmatrix
 			} if
 			rot {
-				rf x false
+				rf -90 matrix rotate makefont x
 				% HeightStringは、
 				% /hstrがないか、/hstr nullならばパラメーターで指定されたhstr
 				% /hstr falseならば指定なし
 				% /hstr trueならば描画する文字自身
 				% /hstr 文字列ならば指定された文字列
 				<<
-				heightstring type /booleantype eq {
-					heightstring {
-						/HeightString x
-					} if
-				} { heightstring type /nulltype eq {
-					/HeightString hstr
-				} { heightstring type /stringtype eq {
-					/HeightString heightstring
-				} {
-					/hstr trap
-				} ifelse } ifelse } ifelse
+					heightstring type /booleantype eq {
+						heightstring {
+							/SHS x
+						} if
+					} { heightstring type /nulltype eq {
+						/SHS hstr
+					} { heightstring type /stringtype eq {
+						/SHS heightstring
+					} {
+						/hstr trap
+					} ifelse } ifelse } ifelse
+					/PX 0.5
 				>>
-				ttfVerticalRotateShow
+				ttfGenericAlignShow
 			} { center {
-				cfont x ttfVerticalCenterShow
+				cfont x << /PX 0.5 /SY 1.2 /NY -0.2 >> ttfGenericAlignShow
 			} {
 				x show
 			} ifelse } ifelse
@@ -485,7 +459,7 @@ currentdict end
 	} bind def
 
 	1.5 1.5 scale
-	/DFKaiSho-Md /EUC-H ttfComposeVerticalFont 18 scalefont setfont
+	/DFKaiSho-Md /EUC-V ttfComposeVerticalFont 18 scalefont setfont
 	/drawline-hfont /DFPKaiSho-Md-EUC-H findfont 18 scalefont def
 	/drawline-centerfont /Times-Roman findfont 16 scalefont def
 	/drawline-hyphen-font /Courier findfont 18 scalefont def
