@@ -1809,7 +1809,9 @@ exch setglobal
 	grestore
 } bind def
 
-% subfont str [ optdict ] <ttfGenericAlignShow> -
+% subfont str dict <ttfGenericAlignShow> -
+% subfont str array <ttfGenericAlignShow> -
+% subfont str num <ttfGenericAlignShow> -
 %	PX: primary font alignment, X direction
 %	PY:	same for Y direction
 %	SX: secondary font alignment, X direction
@@ -1818,14 +1820,25 @@ exch setglobal
 	1 dict begin
 	dup type /dicttype eq {
 		{ def } forall
-	} if
+	} { dup type /arraytype eq {
+		dup length 2 ne { /ttfGenericAlignShow-param trap } if
+		aload pop /PY exch def /PX exch def
+	} {
+		currentfont /WMode knownget not { 0 } if
+		dup 0 eq { pop /PY exch def } {
+		dup 1 eq { pop /PX exch def } {
+			% default
+			/ttfGenericAlignShow-wmode trap
+		} ifelse } ifelse
+	} ifelse } ifelse
 	/s exch def
 	/f exch def
-	/HeightString (fg) ckdef
 	/PX null ckdef
 	/PY null ckdef
+	/PHS (fgM) ckdef
 	/SX PX ckdef
 	/SY PY ckdef
+	/SHS s ckdef
 	/NX SX ckdef
 	/NY SY ckdef
 
@@ -1833,12 +1846,12 @@ exch setglobal
 	nulldevice
 	256 256 scale
 	0 0 moveto
-	HeightString false charpath flattenpath pathbbox
+	PHS false charpath flattenpath pathbbox
 	4 array astore /bb1 exch def
 	newpath
 	f setfont
 	0 0 moveto
-	s false charpath flattenpath pathbbox
+	SHS false charpath flattenpath pathbbox
 	4 array astore /bb2 exch def
 	grestore
 
@@ -1862,15 +1875,17 @@ exch setglobal
 	72 -72 scale
 	0.5 -10.5 translate
 	/vertfont /DFPKaiSho-Md /EUC-V ttfComposeVerticalFont
+%	/vertfont /MS-Gothic /EUC-V ttfComposeVerticalFont
 	[ 1 0 0 -1 0 0 ] makefont def
 	/subfont /Times-Roman findfont [ 1 0 0 -1 0 0 ] makefont
+%	0.5 scalefont
 %	90 matrix rotate makefont
 	def
 	5 0 moveto
 	vertfont setfont
 	(不死鳥) show
 	gsave 0.05 setlinewidth 1 setlinecap 0 0 rlineto stroke grestore
-	subfont (Akamoz) << /SX 0.5 /SY 0 /NY 1 /HeightString (不死鳥) >> ttfGenericAlignShow
+	subfont (Akamoz) [ 0.5 0 ] ttfGenericAlignShow
 	gsave 0.05 setlinewidth 1 setlinecap 0 0 rlineto stroke grestore
 	(！) show
 	showpage
