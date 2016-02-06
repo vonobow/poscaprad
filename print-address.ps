@@ -238,15 +238,26 @@ NoDefaultScript not {
 	end
 } bind def
 
+/drawline-fontcache 1 dict def
+
 % vfontname hfontname size pitch <drawline-setfont> -
 /drawline-setfont {
 	/current-linepitch exch def
 	/current-fontsize exch def
-	findfont current-fontsize scalefont
-	exch CMapName ttfComposeVerticalFont current-fontsize scalefont setfont
+	findfont current-fontsize scalefont /drawline-hfont exch def
+	1 dict begin
+	strdup /vfn exch def
+	/vcfn vfn (-) strcat CMapName strdup strcat def
+	drawline-fontcache vcfn known {
+		drawline-fontcache vcfn get
+	} {
+		vfn CMapName ttfComposeVerticalFont
+		drawline-fontcache vcfn 2 index put
+	} ifelse
+	current-fontsize scalefont setfont
+	end
 	hyphen-fontname findfont current-fontsize scalefont
 	/drawline-hyphen-font exch def
-	/drawline-hfont exch def
 } bind def
 
 % str top bottom dict(opt) <draw-address> -
