@@ -37,11 +37,6 @@
 % value object key [ vokput ] -
 /vokput { 2 index put pop } bind def
 
-% name <loadexec> obj exec
-/loadexec {
-	load /exec cvx
-} bind def
-
 % <dict> <key> knownget ( <val> true ) | false
 % knownget has same functionality as .knownget in GS.
 /knownget {
@@ -69,13 +64,6 @@
 		/exited false put
 	} [ /repeat cvx currentdict ] cvx exec begin
 	exited { exit } if
-} bind def
-
-% array makeproc proc
-%	this procedure cannot leave name as it is,
-%	if it is not included in sub-clauses.
-/makeproc {
-	[ exch { dup type /nametype eq { cvx } if } forall ] cvx
 } bind def
 
 % <obj> <proc> exec-forall -
@@ -592,13 +580,14 @@ currentdict /decodeUTF8Limit undef
 
 % file num <bindfilebuffer> obj
 /bindfilebuffer {
-	[ 3 1 roll string /readstring /not { /readstring trap } /if ] makeproc
+	[
+		3 1 roll string
+		{ readstring not { readstring trap } if } { } forall
+	] cvx
 } bind def
 
 1 dict begin % ttfprocUtility
 
-/b2 /FontFile 2 bindfilebuffer def
-/b4 /FontFile 4 bindfilebuffer def
 /n2 { b2 str2num } bind def
 /n4 { b4 str2num } bind def
 /off2 { n2 Offset add } bind def
@@ -678,6 +667,8 @@ currentdict end
 	//ttfprocUtility begin
 	1 dict begin
 	/FontFile exch def
+	/b2 FontFile 2 bindfilebuffer def
+	/b4 FontFile 4 bindfilebuffer def
 	b4 (ttcf) eq {
 		(TrueType Collection: ) aprintDebug
 		<00010000> ckver
@@ -708,16 +699,17 @@ currentdict end
 
 % otfdict subfontnum <ttfReadTrueTypeHeader> ttfdict
 /ttfReadTrueTypeHeader {
-	1 index begin
+	exch begin
 	//ttfprocUtility begin
 	1 dict begin
 	/sf exch def
-	/otf exch def
 	(TrueType Offset Table ) aprintDebug
 	OffsetTable sf {
 		% copy utility procedures
-		//ttfprocUtility currentdict copy
+		//ttfprocUtility currentdict copy pop
 		/FontFile FontFile def
+		/b2 dup load def
+		/b4 dup load def
 		<00010000> ckver
 		/NumTables n2 def
 		[ ( cnt=) NumTables ] aprintDebug
@@ -733,7 +725,7 @@ currentdict end
 			>> def
 		} repeat end
 	} retr
-	end end end exch pop
+	end end end
 } bind def
 
 % otfdict | ttfdict <ttfCloseFontFile> -
@@ -822,7 +814,7 @@ currentdict end
 		[ (  fontname: off=) 2 index ] aprintDebug
 		setpos
 		FontFile Length string readstring not { /ttfdfn1 trap } if
-		[ /decproc loadexec /encodeUTF8 loadexec ] cvx convertstring
+		{ decproc encodeUTF8 } cvx convertstring
 		dup /String exch def
 		[ ( string=) String (\n) ] aprintDebug
 	} if
