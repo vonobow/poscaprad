@@ -1826,9 +1826,7 @@ exch setglobal
 	/NX SX ckdef
 	/NY SY ckdef
 
-	gsave
-	nulldevice
-	256 256 scale
+	gsave matrix currentmatrix nulldevice setmatrix
 	0 0 moveto
 	PHS false charpath flattenpath pathbbox
 	4 array astore /bb1 exch def

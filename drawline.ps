@@ -264,7 +264,8 @@
 				/toptab false def
 			} if
 			moveonly {
-				gsave matrix currentmatrix nulldevice setmatrix
+				gsave currentpoint matrix currentmatrix
+				nulldevice setmatrix moveto
 			} if
 			rot {
 				rf -90 matrix rotate makefont x
@@ -405,9 +406,8 @@ currentdict end
 
 	% 文字列高さを求める
 	gsave
-		matrix currentmatrix
-		nulldevice
-		setmatrix
+		currentpoint matrix currentmatrix
+		nulldevice setmatrix moveto
 		/settab calconly def
 		currentpoint /y0 exch def pop
 		strlist hstr drawline-draw
