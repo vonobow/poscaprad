@@ -72,14 +72,6 @@ true setglobal
 	] cvx
 } bind def
 
-/charproc {
-	/charproc.ps.akamoz.jp /ProcSet findresource
-} bind def
-
-/cmapproc {
-	/cmapproc.ps.akamoz.jp /ProcSet findresource
-} bind def
-
 % str <printversion> -
 /printversion {
 	str2num [
@@ -220,6 +212,8 @@ currentdict end % subr
 /proclist [
 	/util.ps.akamoz.jp (akamoz-util.ps) preprsc
 	/strbuf.ps.akamoz.jp (akamoz-strbuf.ps) preprsc
+	/charproc.ps.akamoz.jp (akamoz-charproc.ps) preprsc
+	/cmapproc.ps.akamoz.jp (akamoz-cmapproc.ps) preprsc
 	subr
 ] def
 
@@ -371,7 +365,6 @@ end % subr
 
 % ttfdict <ttfGetFontName> ttfdict str
 /ttfGetFontName {
-	charproc begin
 	dup begin
 	1 dict begin
 	/got false def
@@ -395,7 +388,7 @@ end % subr
 		dup /String exch def
 		[ ( string=) String (\n) ] aprintDebug
 	} if
-	end end end end
+	end end end
 } prepproc bind def
 
 % font <ttfFindFontTable> (ttfdict true) | false
@@ -964,7 +957,6 @@ end % subr
 
 % font cmap <ttfFixupVerticalMode> font'
 /ttfFixupVerticalMode {
-	cmapproc begin
 	1 dict begin
 
 	dup type /dicttype eq { /CMapName get } if
@@ -1129,7 +1121,7 @@ end % subr
 
 	exch setglobal
 
-	end end
+	end
 } prepproc bind def
 
 % fontname cmapname <ttfComposeVerticalFont> font
