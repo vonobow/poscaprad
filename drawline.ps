@@ -1,4 +1,6 @@
 %!PS-Adobe 3.0
+% $Id: akamoz-util.ps 73 2015-03-01 10:31:57Z you $
+%
 % Copyright (c) 2016 akamoz.jp
 % All rights reserved.
 % Redistribution and use in source and binary forms, with or without
@@ -24,26 +26,18 @@
 % POSSIBILITY OF SUCH DAMAGE.
 
 /drawline-version (0.1) def
+/drawline-filename (drawline.ps) def
+/drawlineDebug { pop } def
 
-(ttf-vert.ps) runlibfile
+{
+	drawline-filename print ( version ) print
+	drawline-version print (\n) print
+} drawlineDebug
 
-% <dict> <key> <default> defaultget <value>
-/defaultget {
-	3 1 roll knownget {
-		exch pop
-	} if
-} bind def
 
-% ( array | any ) <alength> num
-/alength {
-	dup type /arraytype eq { length } { pop 1 } ifelse
-} bind def
-
-% ( array | any ) num <aget> any
-/aget {
-	1 index type /arraytype eq { get } { 0 ne { trap } if } ifelse
-} bind def
-
+%---------------------------------------------------------------------
+% procedure for defining substtable dict
+%---------------------------------------------------------------------
 % str1 str2 <expandstrrange> str1 str1+1 ... str2
 /expandstrrange {
 	3 dict begin
@@ -64,42 +58,6 @@
 	end
 } bind def
 
-% str num <splitstring> str1 str2
-/splitstring {
-	2 dict begin
-	/n exch def
-	/s exch def
-	s 0 n getinterval
-	s n s length n sub getinterval
-	end
-} bind def
-
-% str <charbytes> num
-/charbytesEUC {
-	0 get 16#80 lt {
-		1
-	} {
-		2
-	} ifelse
-} bind def
-
-/charbytesUTF8 {
-	0 get dup 16#80 lt {
-		1
-	} { dup 16#c0 lt {
-		/charbyteUTF8 trap
-	} { dup 16#e0 lt {
-		2
-	} { dup 16#f0 lt {
-		3
-	} { dup 16#f8 lt {
-		4
-	} {
-		/charbyteUTF8 trap
-	} ifelse } ifelse } ifelse } ifelse } ifelse
-	exch pop
-} bind def
-
 /substtable <<
 	(1)	(一)
 	(2) (二)
@@ -116,11 +74,13 @@
 	(-) [ /rot /hfont /drawline-hyphen-font /hstr true ]
 >> def
 
-5 dict begin
+currentdict % caller's dict
+1 dict begin % localdict
+5 dict begin % drawline-subr
 
 % - <extractchar> -
 /extractchar {
-	str dup charbytesproc splitstring /str exch def /c exch def
+	str dup charbytesproc splitstring /c exch def /str exch def
 } bind def
 
 % - <drawline-strlist> ... bool
@@ -291,31 +251,33 @@
 				/toptab false def
 			} if
 			moveonly {
-				gsave matrix currentmatrix nulldevice setmatrix
+				gsave currentpoint matrix currentmatrix
+				nulldevice setmatrix moveto
 			} if
 			rot {
-				rf x false
+				rf -90 matrix rotate makefont x
 				% HeightStringは、
 				% /hstrがないか、/hstr nullならばパラメーターで指定されたhstr
 				% /hstr falseならば指定なし
 				% /hstr trueならば描画する文字自身
 				% /hstr 文字列ならば指定された文字列
 				<<
-				heightstring type /booleantype eq {
-					heightstring {
-						/HeightString x
-					} if
-				} { heightstring type /nulltype eq {
-					/HeightString hstr
-				} { heightstring type /stringtype eq {
-					/HeightString heightstring
-				} {
-					/hstr trap
-				} ifelse } ifelse } ifelse
+					heightstring type /booleantype eq {
+						heightstring {
+							/SHS x
+						} if
+					} { heightstring type /nulltype eq {
+						/SHS hstr
+					} { heightstring type /stringtype eq {
+						/SHS heightstring
+					} {
+						/hstr trap
+					} ifelse } ifelse } ifelse
+					/PX 0.5
 				>>
-				ttfVerticalRotateShow
+				alignshow
 			} { center {
-				cfont x ttfVerticalCenterShow
+				cfont x << /PX 0.5 /SY 1.2 /NY -0.2 >> alignshow
 			} {
 				x show
 			} ifelse } ifelse
@@ -370,8 +332,40 @@
 	end
 } bind def
 
-currentdict end
+currentdict end % drawline-subr
 /drawline-subr exch def
+
+% resourcename filenamestr <preprsc> rscdict
+/preprsc {
+	systemdict /findlibfile known {	% running on ghostscript
+		findlibfile {
+			{ (running ) print 1 index print (\n) print flush } drawlineDebug
+			cvx exec pop
+		} { pop } ifelse
+	} { pop } ifelse
+	/ProcSet findresource
+} bind def
+
+/proclist [
+	/util.ps.akamoz.jp (akamoz-util.ps) preprsc
+	/showtext.ps.akamoz.jp (akamoz-showtext.ps) preprsc
+	drawline-subr
+] def
+
+% proc <prepproc> proc'
+%	bind proc with proclist (defined above) dictionary.
+/prepproc {
+	1 dict begin
+	/p exch def
+	[
+		proclist { /begin cvx } forall
+		/p load { } forall
+		proclist length { /end cvx } repeat
+	] cvx
+	end
+} bind def
+
+begin % caller's dict
 
 % str height [ optdict ] <drawline> -
 % 	str:
@@ -392,7 +386,7 @@ currentdict end
 %		/Tab 辞書 (output)
 %			タブ位置を示す。
 %		/HeightString str
-%			ttfVerticalRotateShowに渡すHeightString。デフォルトは(fg)
+%			alignshowに渡すHeightString。デフォルトは(fg)
 %		/CalcOnly
 %			falseの場合は描画まで行う。trueの場合は描画はしない。
 %		/StringHeight (出力)
@@ -400,7 +394,6 @@ currentdict end
 %		/DrawingHeight (出力)
 %			実際の描画高さ。/CalcOnlyがtrueの場合は設定されない。
 /drawline {
-	//drawline-subr begin
 	1 dict begin 1 {
 
 	% パラメーター取得
@@ -431,9 +424,8 @@ currentdict end
 
 	% 文字列高さを求める
 	gsave
-		matrix currentmatrix
-		nulldevice
-		setmatrix
+		currentpoint matrix currentmatrix
+		nulldevice setmatrix moveto
 		/settab calconly def
 		currentpoint /y0 exch def pop
 		strlist hstr drawline-draw
@@ -468,11 +460,12 @@ currentdict end
 		} ifelse } ifelse } ifelse } ifelse
 	} if
 
-	} repeat end end
-} bind def
+	} repeat end
+} prepproc bind def
 
 {
-	/charbytesproc { charbytesEUC } def
+	/charproc.ps.akamoz.jp /ProcSet findresource begin
+	/charbytesproc /charbytesEUC load end def
 
 	/crossmark {
 		gsave
@@ -485,7 +478,9 @@ currentdict end
 	} bind def
 
 	1.5 1.5 scale
-	/DFKaiSho-Md /EUC-H ttfComposeVerticalFont 18 scalefont setfont
+	/ttfproc.ps.akamoz.jp /ProcSet findresource begin
+	/DFKaiSho-Md /EUC-V ttfComposeVerticalFont 18 scalefont setfont
+	end
 	/drawline-hfont /DFPKaiSho-Md-EUC-H findfont 18 scalefont def
 	/drawline-centerfont /Times-Roman findfont 16 scalefont def
 	/drawline-hyphen-font /Courier findfont 18 scalefont def
@@ -508,3 +503,6 @@ currentdict end
 	showpage
 	quit
 } pop
+
+end % caller's dict
+end % localdict

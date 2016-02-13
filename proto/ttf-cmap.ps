@@ -1,0 +1,1066 @@
+%!
+% /DebugDump true def
+% /ttfDebugDump true def
+% /ttfVerbose true def
+
+% <dict> <key> knownget ( <val> true ) | false
+% knownget has same functionality as .knownget in GS.
+/knownget {
+	2 copy known { get true } { pop pop false } ifelse
+} bind def
+
+% <key> <default> defaultload <value>
+/defaultload {
+	exch dup where {
+		exch get exch pop
+	} {
+		pop
+	} ifelse
+} bind def
+
+% array { } <for-array> array
+% args for proc: array idx
+% proc must remove idx, but keep array.
+/for-array {
+	0 1 3 index length 1 sub 4 -1 roll for
+} bind def
+
+% <key> <dict> <default> default-switch -
+/default-switch {
+	3 1 roll exch knownget {
+		exch pop
+	} if
+	exec
+} bind def
+
+% <obj> <proc> exec-forall -
+/exec-forall {
+	1 index type /arraytype eq {
+		forall
+	} {
+		1 exch repeat
+	} ifelse
+} bind def
+
+/ttfDebug { /ttfDebugDump false defaultload exch if } bind def
+/ttfVerboseLog { /ttfVerbose false defaultload exch if } bind def
+
+/expand-composite {
+	1 dict begin
+	/expand false def
+	[ exch bind
+		{
+			dup dup dup
+			type /arraytype eq
+			exch type /packedarraytype eq or
+			exch xcheck and {
+				expand-composite
+			} { dup { mark } aload pop eq {
+				exec /expand true def
+			} { expand {
+				dup dup { >> } aload pop eq
+				exch { ] } aload pop eq or {
+					/expand false def
+				} if
+				exec
+			} if } ifelse } ifelse
+		} forall
+	] cvx
+	end
+} bind def
+
+% strarray pos size  <getstrarray> str true
+% strarray pos size <getstrarray> false
+/getstrarray {
+	4 dict begin
+	/sz exch def
+	/pos exch def
+	/got false def
+	{
+		/s exch def
+		pos s length lt {
+			s pos sz getinterval
+			/got true def
+			exit
+		} if
+		/pos pos s length sub def
+	} exec-forall
+	got
+	end
+} bind def
+
+% sfnts <opensfnts> dict
+/opensfnts {
+	1 dict begin
+	/sfnts exch def
+	sfnts type /stringtype eq {
+		/sfnts [ sfnts ] def
+	} if
+	/idx 0 def
+	/pos 0 def
+	/top 0 def
+	/buf null def
+	currentdict end
+} bind def
+
+% dict <getsfnts> ( int true ) | false
+/getsfnts {
+	begin 1 dict begin
+	/got false def
+	buf null eq {
+		/p 0 def
+		/i 0 def
+		sfnts {
+			dup length p add pos gt {
+				/idx i store
+				/buf exch store
+				/top p store
+				/pos pos top sub store
+				exit
+			} if
+			length p add /p exch def
+			/i i 1 add def
+		} forall
+	} if
+	buf null ne {
+		idx sfnts length lt {
+			pos buf length lt {
+				buf pos get
+				/pos pos 1 add store
+				/got true def
+				pos buf length eq {
+					/top top pos add store
+					/pos 0 store
+					/idx idx 1 add store
+					idx sfnts length lt {
+						/buf sfnts idx get store
+					} if
+				} if
+			} if
+		} if
+	} if
+	got
+	end end
+} bind def
+
+% dict str <readsfnts> substr bool
+/readsfnts {
+	1 dict begin
+	/s exch def
+	/f exch def
+	/i 0 def
+	/mature true def
+	s length {
+		f getsfnts {
+			s i 2 index put pop
+		} {
+			/mature false def exit
+		} ifelse
+		/i i 1 add store
+	} repeat
+	mature {
+		s true
+	} {
+		s 0 i getinterval false
+	} ifelse
+	end
+} bind def
+
+% dict <sfntsposition> num
+/sfntsposition {
+	begin
+	top pos add
+	end
+} bind def
+
+% dict num <setsfntsposition> -
+/setsfntsposition {
+	exch begin
+	/pos exch def
+	/buf null def
+	/top 0 def
+	end
+} bind def
+
+/forwardsfnts {
+	1 index sfntsposition add setsfntsposition
+} bind def
+
+% str <str2num> num
+/str2num {
+	0 exch { exch 8 bitshift add } forall
+} bind def
+
+% dict pos <saveandseek> dict oldpos
+/saveandseek {
+	1 index sfntsposition
+	exch 2 index exch setsfntsposition
+} bind def
+
+% num <print1hex> -
+/print1hex {
+	15 and
+	dup 10 lt {
+		(0123456789) exch 1 getinterval print
+	} {
+		(abcdef) exch 10 sub 1 getinterval print
+	} ifelse
+} bind def
+
+% num <print2hex> -
+/print2hex {
+	dup -4 bitshift print1hex print1hex
+} bind def
+
+% num <print4hex> -
+/print4hex {
+	dup -8 bitshift print2hex print2hex
+} bind def
+
+% num <print8hex> -
+/print8hex {
+	dup -16 bitshift print4hex print4hex
+} bind def
+
+% lowbits <initdictarray> dict
+/initdictarray {
+	2 dict
+	begin
+	/lowbits exch def
+	/numelem 1 lowbits bitshift def
+	/lowmask numelem 1 sub def
+	/hishift lowbits neg def
+	/himax -1 def
+	/maxkey -1 def
+	currentdict end
+} bind def
+
+% dict key val <putdictarray> -
+/putdictarray {
+	2 dict begin
+	/v exch def
+	/k exch def
+	begin
+	k hishift bitshift
+	currentdict 1 index known not {
+		currentdict 1 index numelem array put
+		dup himax gt {
+			dup /himax exch def
+		} if
+	} if
+	load k lowmask and v put
+	maxkey k lt { /maxkey k def } if
+	end end
+} bind def
+
+% dict key <getdictarray> val
+/getdictarray {
+	1 dict begin
+	/k exch def
+	begin
+	k hishift bitshift
+	currentdict 1 index known {
+		load k lowmask and get
+	} {
+		pop null
+	} ifelse
+	end end
+} bind def
+
+% dicarray proc <dictarrayforall> -
+%	proc is called with:
+%		key value <proc> -
+/dictarrayforall {
+	5 dict begin
+	/p exch def
+	/d exch def
+	/m d /numelem get def
+	0 1 d /himax get {
+		/h exch def
+		d h known {
+			/k h m mul def
+			d h get {
+				dup null eq {
+					pop
+				} {
+					k exch p
+				} ifelse
+				/k k 1 add def
+			} forall
+		} if
+	} for
+	end
+} bind def
+
+% sfntsdict <ttfReadCmapFormat12> -
+%	format (USHORT) is already read.
+/ttfReadCmapFormat12 {
+	1 dict begin
+	/f exch def
+	/b4 4 string def
+	/b16 16 string def
+	f 2 forwardsfnts
+	f b4 readsfnts not { /ttfcmap12a trap } if
+	str2num /len exch def
+	f b4 readsfnts not { /ttfcmap12b trap } if
+	str2num 0 ne { /ttfcmap12c trap } if
+	f b4 readsfnts not { /ttfcmap12d trap } if
+	str2num /numgrp exch def
+	numgrp {
+		f b4 readsfnts not { /ttfcmap12e trap } if
+		str2num /startchar exch def
+		f b4 readsfnts not { /ttfcmap12f trap } if
+		str2num /endchar exch def
+		f b4 readsfnts not { /ttfcmap12g trap } if
+		str2num /gid exch def
+		startchar 1 endchar {
+			ucs4gid exch gid putdictarray
+			/gid gid 1 add def
+		} for
+		{
+			startchar print8hex
+			( ) print
+			endchar print8hex
+			( ) print
+			startgid b16 cvs print
+			(\n) print
+		} pop
+	} repeat
+	end
+} bind def
+
+% sfntsdict <ttfReadCMapTable> dictarray
+/ttfReadCMapTable {
+	1 dict begin
+	/f exch def
+	/b4 4 string def
+	/b2 2 string def
+	/enctype 0 def
+	/ucs4gid 10 initdictarray def
+
+	f sfntsposition
+	f b2 readsfnts not { /ttfcmapv1 trap } if
+	str2num 0 ne { /ttfcmapv2 trap } if
+	f b2 readsfnts not { /ttfcmapn1 trap } if
+	str2num dup 0 le { /ttfcmapn2 trap } if
+	{
+		f b2 readsfnts not { /ttfcmappfid trap } if
+		str2num /pf exch def
+		f b2 readsfnts not { /ttfcmapencid trap } if
+		str2num /enc exch def
+		f b4 readsfnts not { /ttfcmapoffset trap } if
+		str2num /off exch def
+		pf 3 eq {
+			enc 1 eq {
+				(USC2 table is found\n) print flush
+				enctype 1 lt {
+					/enctype 1 def
+					/platform pf def
+					/encoding enc def
+					/offset off def
+				} if
+			} { enc 10 eq {
+				(USC4 table is found\n) print flush
+				enctype 2 lt {
+					/enctype 2 def
+					/platform pf def
+					/encoding enc def
+					/offset off def
+				} if
+			} if } ifelse
+		} if
+	} repeat
+	f exch setsfntsposition
+	enctype 1 eq {
+		(UCS2 encoding is selected\n) print flush
+	} { enctype 2 eq {
+		(UCS4 encoding is selected\n) print flush
+	} {
+		/ttfcmapnoenc trap
+	} ifelse } ifelse
+	f offset forwardsfnts
+	f b2 readsfnts not { /ttfcmapfmt1 trap } if
+	str2num /tf exch def
+	tf 12 eq {
+		f ttfReadCmapFormat12
+	} {
+		/ttfcmapfmt2 trap
+	} ifelse
+	ucs4gid end
+} bind def
+
+% dict str4 <getversion> -
+/getversion {
+	readsfnts not { /getversion trap } if
+	{
+		dup 2 2 getinterval
+		1 index 0 2 getinterval str2num
+		(  version: %d.%S\n) dprintf
+	} ttfDebug
+	pop
+} bind def
+
+% origin dict str2 <getoffset> off
+/getoffset {
+	readsfnts not { /getoffset-read trap } if
+	str2num { dup dup (offset=%d (0x%04x), ) dprintf } ttfDebug
+	add { dup dup (position=%d (0x%08x)\n) dprintf } ttfDebug
+} bind def
+
+/repeat-count {
+	exch 0 exch 1 exch 1 sub 4 -1 roll for
+} bind def
+
+% off <scripttable> array
+/scripttable {
+	5 dict begin
+	/off exch def
+	/reqlst null def
+	f off saveandseek
+
+	{ (    DefaultLangSys ) dprintf } ttfDebug
+	off f b2 getoffset pop
+	f b2 readsfnts not { /scripttable-cntread /trap } if
+	str2num { dup (    LangSysCount: %d\n) dprintf } ttfDebug
+	{
+		{ dup (    Lang %d: ) dprintf } ttfDebug pop
+		f b4 readsfnts not { /scripttabe-langtagread /trap } if
+		{ dup (Tag=%s, ) dprintf } ttfDebug
+		off f b2 getoffset
+		exch (JAN ) eq {
+			f exch 2 add saveandseek
+			f b2 readsfnts not { /scripttable-langreqidx /trap } if
+			str2num { dup (      ReqFeatureIndex: %d\n) dprintf } ttfDebug pop
+			f b2 readsfnts not { /scripttable-featurecount /trap } if
+			str2num dup 0 le { /scripttable-featurecount-val /trap } if
+			{ dup (      FeatureCount: %d\n) dprintf } ttfDebug
+			dup array exch
+			{
+				{ dup (      Index %d: ) dprintf } ttfDebug
+				1 index exch
+				f b2 readsfnts not { /scripttable-featurelist /trap } if
+				str2num { dup (%d\n) dprintf } ttfDebug put
+			} repeat-count
+			/reqlst exch def
+			setsfntsposition
+			{ (\033[1m  kana/JAN found.\033[m\n) dprintf } ttfDebug
+			exit
+		} {
+			pop
+		} ifelse
+	} repeat-count
+	setsfntsposition
+	reqlst
+	end
+} bind def
+
+% off <scriptlist> array
+/scriptlist {
+	5 dict begin
+	/off exch def
+	/reqlst null def
+	f off saveandseek
+
+	f b2 readsfnts not { /scriptlist-cntread /trap } if
+	str2num { dup (  Count: %d\n) dprintf } ttfDebug
+	{
+		{ dup (  Script %d: ) dprintf } ttfDebug pop
+		f b4 readsfnts not { /scriptlist-tag /trap } if
+		{ dup (Tag=%s, ) dprintf } ttfDebug
+		off f b2 getoffset
+		exch (kana) eq {
+			scripttable /reqlst exch def exit
+		} {
+			pop
+		} ifelse
+	} repeat-count
+
+	setsfntsposition
+	reqlst
+	end
+} bind def
+
+% offset <featurelist> flst
+/featurelist {
+	2 dict begin
+	/off exch def
+	f off saveandseek
+
+	f b2 readsfnts not { /featurelist-cnt trap } if
+	str2num { dup (  FeatureList: count %d\n) dprintf } ttfDebug
+	array {
+		3 dict begin
+		/id f b4 readsfnts not { /featurelist-id trap } if 4 string copy def
+		f b2 readsfnts not { /featurelist-off trap } if str2num
+		dup off add /pos exch def /off exch def
+		{
+			dup id exch (    %d: %s ) dprintf
+			off dup (offset=%d (0x%x), ) dprintf
+			pos dup (position=%d (0x%x)\n) dprintf
+		} ttfDebug
+		2 copy currentdict end put pop
+	} for-array
+	3 1 roll setsfntsposition
+	end
+} bind def
+
+% offset <featuretable> array
+/featuretable {
+	1 dict begin
+	/off exch def
+	f off saveandseek
+
+	f b2 readsfnts not { /featuretable-param trap } if str2num
+	{ dup (params: %d, ) dprintf } ttfDebug pop
+	f b2 readsfnts not { /featuretable-cnt trap } if str2num
+	{ dup (count: %d\n) dprintf } ttfDebug
+	array {
+		f b2 readsfnts not { /featuretable-lstidx trap } if
+		str2num	% array idx lstidx
+		{ dup 2 index (    %d: LookupIndex=%d\n) dprintf } ttfDebug
+		3 copy put pop pop
+	} for-array
+
+	3 1 roll setsfntsposition
+	end
+} bind def
+
+% offset <lookuplist> array
+/lookuplist {
+	1 dict begin
+	/off exch def
+	f off saveandseek
+
+	f b2 readsfnts not { /lookuplist-cnt trap } if str2num
+	{ dup (  LookupList: count=%d\n) dprintf } ttfDebug
+	array {
+		{ dup (    %d: ) dprintf } ttfDebug
+		off f b2 getoffset
+		3 copy put pop pop
+	} for-array
+	3 1 roll setsfntsposition
+	end
+} bind def
+
+% off <coverage> array
+/coverage {
+	f exch saveandseek
+
+	f b2 readsfnts not { /cov-fmt trap } if
+	str2num { dup (cov-fmt=%d, ) dprintf } ttfDebug
+	<<
+		1 {
+			f b2 readsfnts not { /conv-count trap } if
+			str2num { dup (glyphcnt=%d\n) dprintf } ttfDebug
+			array {
+				2 copy
+				f b2 readsfnts not { /cov-gid trap } if
+				str2num put pop
+			} for-array
+		}
+	>> { /coverage-fmt trap } default-switch
+
+	3 1 roll setsfntsposition
+} expand-composite def
+
+% off <subtable> dict
+/subtable {
+	3 dict begin
+	/off exch def
+	f off saveandseek
+	f b2 readsfnts not { /subtable-formatread trap } if
+	str2num { dup (      substfmt=%d, ) dprintf } ttfDebug
+	<<
+		2 {
+			f b2 readsfnts not { /subtable-formatread trap } if
+			str2num { dup (cov-off=%d, ) dprintf } ttfDebug
+			off add { dup (pos=%d, ) dprintf } ttfDebug
+			coverage % srcarray
+			f b2 readsfnts not { /subtable-cnt trap } if
+			str2num { dup (      subst-glyphcount=%d ... ) dprintf } ttfDebug
+			1 index length 1 index ne { /subtable-unmatch trap } if
+			dict begin
+			{
+				f b2 readsfnts not { /subtable-data trap } if
+				str2num	def
+			} forall
+			currentdict end
+			{ (done\n) dprintf } ttfDebug
+		}
+	>> { /subst-format trap } default-switch
+
+	3 1 roll setsfntsposition end
+} expand-composite def
+
+% off <lookuptable> array
+/lookuptable {
+	5 dict begin
+	/off exch def
+	f off saveandseek
+
+	f b2 readsfnts not { /lookuptable-typeread trap } if
+	str2num /lutype exch def
+	{ lutype (type=%d, ) dprintf } ttfDebug
+	f b2 readsfnts not { /lookuptable-flagread trap } if
+	str2num /flag exch def
+	{ flag (flag=%04x, ) dprintf } ttfDebug
+	f b2 readsfnts not { /lookuptable-countread trap } if
+	str2num /cnt exch def
+	{ cnt (count=%d\n) dprintf } ttfDebug
+
+	/subtbl cnt array def
+	cnt {
+		{ dup (    subtable %d: ) dprintf } ttfDebug
+		off f b2 getoffset subtable
+		subtbl 3 1 roll put
+	} repeat-count
+
+	setsfntsposition
+	subtbl
+	end
+} def
+
+% dict offset ttfGSUB dict
+/ttfGSUB {
+	9 dict begin
+	/off exch def
+	/f exch def
+	/b4 4 string def
+	/b2 2 string def
+	f off saveandseek
+
+	1 {
+		f b4 getversion
+		{ (  ScriptList ) dprintf } ttfDebug off f b2 getoffset
+		scriptlist /reqlst exch def	% array of int
+		reqlst null eq { exit } if
+
+		{ (  FeatureList ) dprintf } ttfDebug off f b2 getoffset
+		featurelist /flst exch def	% array of << id off pos >>
+
+		null
+		reqlst {
+			flst 1 index get
+			dup /id get (vert) eq {	% idx dict
+				exch { dup (  Feature %d: ) dprintf } ttfDebug pop	% dict
+				/pos get featuretable exch pop
+				exit
+			} if
+			pop pop
+		} forall
+		dup null eq { exit } if
+		/lutbl exch def
+
+		{ (  LookupList ) dprintf } ttfDebug
+		off f b2 getoffset
+		lookuplist /lulst exch def
+
+		lutbl length array
+		lutbl {	% array lutbl idx
+			2 copy get
+			{ dup (  LookupTable %d: ) dprintf } ttfDebug
+			lulst exch get { dup (position=%d, ) dprintf } ttfDebug
+			lookuptable
+			3 index 2 index 2 index put pop
+			pop
+		} for-array
+		pop
+	} repeat
+
+	dup null eq {
+		{ (\033[1mINFO: No verticalize table found\033[m\n) dprintf } ttfDebug
+		pop << >>
+	} {
+		0 1 index {
+			{
+				length add
+			} forall
+		} forall
+		{
+			dup (\033[1mINFO: number of verticalized glyphs: %d\033[m\n)
+			dprintf
+		} ttfVerboseLog
+		dict begin
+		{ { { def } forall } forall } forall
+		currentdict end
+	} ifelse
+	3 1 roll setsfntsposition
+	end
+} bind def
+
+% font <ttfParseTable> dict
+/ttfParseTable {
+	1 dict begin
+	/sfnts get opensfnts /f exch def
+	/b4 4 string def
+	/b2 2 string def
+	/tag 4 string def
+	f b4 readsfnts not { /ttf4r trap } if
+	<00010000> ne { /ttf4-not-ttf trap } if
+	f b2 readsfnts not { /ttf5r trap } if
+	str2num dup 0 le { /ttf5n trap } if
+	1 dict begin
+	/gsubtable << >> def	% the default, empty table.
+	f 6 forwardsfnts
+	{
+		f b4 readsfnts not { /ttf6r trap } if tag copy pop
+		f 4 forwardsfnts % sum
+		f b4 readsfnts not { /ttf7r trap } if
+		str2num dup 0 le { /ttf7n trap } if
+		/offset exch def
+		f b4 readsfnts not { /ttf8r trap } if
+		str2num dup 0 le { /ttf8n trap } if
+		/len exch def
+		tag (maxp) eq {
+			f offset saveandseek
+			f b4 readsfnts not { /ttfmaxp1v trap } if pop
+			f b2 readsfnts not { /ttfmaxp1r trap } if
+			str2num dup 0 le { /ttfmaxp1gn trap } if
+			/numglyphs exch def
+			setsfntsposition
+		} if
+		tag (GSUB) eq {
+			f offset ttfGSUB /gsubtable exch def
+		} if
+		tag (cmap) eq {
+			f offset saveandseek
+			f ttfReadCMapTable /cmaptable exch def
+			setsfntsposition
+		} if
+	} repeat
+	currentdict end
+	end
+} bind def
+
+% str strdup str'
+% name strdup str'
+/strdup {
+	dup length string cvs
+} bind def
+
+% str1 str2 <strcat> str'
+/strcat {
+	2 dict begin
+	/str2 exch def
+	/str1 exch def
+	str1 length str2 length add string
+	dup 0 str1 putinterval
+	dup str1 length str2 putinterval
+	end
+} bind def
+
+% num str <num2str> str
+/num2str {
+	1 dict begin
+	/s exch def
+	s length 1 sub -1 0 {
+		s exch 2 index 255 and put
+		-8 bitshift
+	} for
+	pop s end
+} bind def
+
+% dict copyfont dict'
+/copyfont {
+	dup length dict copy
+	dup /FID undef
+	dup /UIDBase undef
+	dup /UniqueID undef
+	begin
+	/XUID [ 1000000 XUID aload pop ] def
+	currentdict end
+} bind def
+
+% cidmap copyCIDMap -
+% currentdict is used as font.
+/copyCIDMap {
+	dup type /arraytype eq {
+		[ exch { dup length string copy } forall ]
+	} {
+		dup length string copy
+	} ifelse
+	/CIDMap exch def
+} bind def
+
+% [ a b ... ] value <expandarrayval>
+%	a value
+%	b value
+%	...
+/expandarrayval {
+	1 dict begin
+	/v exch def
+	{ v } forall
+	end
+} bind def
+
+% series of UCS4to...
+%	num str <UCS4to...> str true
+%	num str <UCS4to...> false
+% length of str must be at least 4.
+/UCS4toUCS4 {
+	1 index 16#10ffff le {
+		0 4 getinterval num2str true
+	} {
+		pop pop false
+	} ifelse
+} bind def
+
+% without surrogates, plain 16bit code
+/UCS4toUCS2 {
+	1 index 16#ffff le {
+		0 2 getinterval num2str true
+	} {
+		pop pop false
+	} ifelse
+} bind def
+
+% with surrogates
+/UCS4toUTF16 {
+	1 index 16#ffff le {
+		0 2 getinterval num2str true
+	} { 1 index 16#10ffff le {
+		4 dict begin
+		/s exch def
+		16#10000 sub /n exch def
+		/h n -10 bitshift 16#D800 add def
+		/l n 16#3ff and 16#DC00 add def
+		h 16 bitshift l add s 0 4 getinterval num2str true
+		end
+	} {
+		pop pop false
+	} ifelse } ifelse
+} bind def
+
+/UCS4toUTF8 {
+	1 index 16#7f le {
+		0 1 getinterval num2str true
+	} { 1 index 16#7ff le { % 110..... 10...... : 11bits
+		exch dup 16#3f and
+		exch 2 bitshift 16#1f00 and add
+		16#c080 add
+		exch 0 2 getinterval num2str true
+	} { 1 index 16#ffff le { % 1110.... 10...... 10...... : 16bits
+		exch dup 16#3f and
+		1 index 2 bitshift 16#3f00 and add
+		exch 4 bitshift 16#0f0000 and add
+		16#e08080 add
+		exch 0 3 getinterval num2str true
+	} { 1 index 16#10ffff le { % 1111 0... 10...... 10...... 10...... : 21bits
+		exch dup 16#3f and
+		1 index 2 bitshift 16#3f00 and add
+		1 index 4 bitshift 16#3f0000 and add
+		exch 6 bitshift 16#07000000 and add
+		16#f0808080 add
+		exch 0 4 getinterval num2str true
+	} {
+		pop pop false
+	} ifelse } ifelse } ifelse } ifelse
+} bind def
+
+/ttfVerticalFixupInfo <<
+	/Japan1 <<
+		[ /78-RKSJ-V /78ms-RKSJ-V /90ms-RKSJ-V /90msp-RKSJ-V
+		  /90pv-RKSJ-V /RKSJ-V ]
+		[ [ <00> <80> ] [ <8140> <9FFC> ] [ <A0> <DF> ]
+		  [ <E040> <FCFC> ] [ <FD> <FF> ] ]
+		expandarrayval
+
+		[ /78-EUC-V /EUC-V ]
+		[ [ <00> <80> ] [ <8EA0> <8EDF> ] [ <A1A1> <FEFE> ] ]
+		expandarrayval
+
+		[ /UniJIS-UCS2-HW-V /UniJIS-UCS2-V /UniJISPro-UCS2-HW-V
+		  /UniJISPro-UCS2-V ]
+		/UCS4toUCS2 expandarrayval
+
+		[ /UniJIS-UTF16-V /UniJIS2004-UTF16-V ]
+		/UCS4toUTF16 expandarrayval
+
+		[ /UniJIS-UTF32-V /UniJIS2004-UTF32-V /UniJISX0213-UTF32-V
+		  /UniJISX02132004-UTF32-V ]
+		/UCS4toUCS4 expandarrayval
+
+		[ /UniJIS-UTF8-V /UniJIS2004-UTF8-V /UniJISPro-UTF8-V ]
+		/UCS4toUTF8 expandarrayval
+	>>
+>> def
+
+% fontname_or_fontdict cmapname_or_cmapdict <ttfVerticalFixupFont> dict
+/ttfVerticalFixupFont {
+	1 dict begin
+	dup type /dicttype ne {
+		/CMap findresource
+	} if
+	/cmap exch def
+	dup type /dicttype ne {
+		/CIDFont findresource
+	} if
+	copyfont /font exch def
+	/ttftable font ttfParseTable def
+
+	% cmapからCIDSystemInfo辞書のOrderingを引っ張り出し、
+	% ttfVerticalFixupInfoを引く。
+	% さらにCMapNameを引っ張り出して辞書を引く
+	ttfVerticalFixupInfo cmap /CIDSystemInfo get /Ordering get get
+	cmap /CMapName get get
+	dup type /arraytype eq {
+		/crange exch def
+		/assume-unicode false def
+	} {
+		load /convertUCS exch def
+		/assume-unicode true def
+	} ifelse
+
+	/lastcid 0 def
+
+	font begin
+		currentdict /subst_CID_on_WMode undef
+		/FontType 42 def
+		CIDMap copyCIDMap
+		/DEVICE /defaultdevice defaultload /pdfwrite ne {
+			/CIDSystemInfo <<
+				/Registry (Artifex)
+				/Ordering (Identity)
+				/Supplement 0
+			>> readonly def
+		} if
+		/CDevProc {
+			1 dict begin
+			/cid exch def
+			10 array astore
+			/metric exch def
+			% [ w0x w0y llx lly urx ury w1x w1y vx vy ]
+			cid 231 eq {	% 半角スペース
+				metric 7 -0.5 put
+			} {
+				metric 7 -1 put
+			} ifelse
+			metric 6 0 put
+			metric 8 0.5 put
+			metric 9 1 put
+			metric ==
+			metric aload pop
+			end
+		} bind def
+	end
+
+	% create BuildGlyph CID font
+	currentdict	% communicate with currentdict
+	1 dict begin
+	/privateparams exch def
+	/CIDFontType 1 def
+	/CIDFontName /ttfGetCID-CIDFont def
+	/CIDSystemInfo cmap /CIDSystemInfo get def
+	/FontBBox [ 0 0 1 1 ] def
+	/FontMatrix matrix def
+	/FontType 10 def
+	/XUID [ 1000000 1 ] def
+	/BuildGlyph {	% is called with cid
+		exch begin
+		privateparams exch /lastcid exch put
+		0 0 setcharwidth	% don't cache
+		end
+	} bind def
+	currentdict end
+	/ttfGetCID-CIDFont exch /CIDFont defineresource
+
+	% create Composit font with specified CMap
+	1 array astore
+	/ttfGetCID-Font exch cmap exch composefont
+	gsave setfont 0 0 moveto
+
+	/substGID {
+		CIDMap lastcid GDBytes mul GDBytes getstrarray {
+			dup str2num ttftable /gsubtable get exch knownget {
+				exch num2str pop
+			} {
+				pop
+			} ifelse
+		} if
+	} bind def
+
+	assume-unicode {
+		/s 4 string def
+		font begin
+		ttftable /cmaptable get {	% unicode gid
+			pop s convertUCS {
+				show substGID
+			} if
+		} dictarrayforall
+		end
+	} {
+		crange {
+			dup length string /s exch def
+			{ str2num } forall
+			font begin
+			1 exch {
+				s num2str show substGID
+			} for
+			end
+		} forall
+	} ifelse
+
+	% cleaning up the fonts
+	grestore
+	/ttfGetCID-Font undefinefont
+	/ttfGetCID-CIDFont undefinefont
+
+	font begin
+	CIDFontName currentdict /CIDFont defineresource
+	end
+	end
+} bind def
+
+{
+	/crossmark {
+		gsave
+		0 setlinewidth
+		-0.5 0 rmoveto 1 0 rlineto
+		-0.5 -0.5 rmoveto 0 1 rlineto
+		stroke
+		grestore
+	} bind def
+
+	72 72 scale
+	0.5 10.5 translate
+	/fontname /MS-Mincho def
+
+	/cmapname /EUC-V def
+	fontname cmapname ttfVerticalFixupFont
+	1 array astore /Test exch cmapname exch composefont
+	0.5 scalefont setfont
+	0 0 moveto
+	% (abc!"#$「キャッチャー！」)
+	<61626321222324a1d6a5ada5e3a5c3a5c1a5e3a1bca1aaa1d7> % EUC
+	crossmark show crossmark
+
+	/cmapname /90ms-RKSJ-V def
+	fontname cmapname ttfVerticalFixupFont
+	1 array astore /Test exch cmapname exch composefont
+	0.5 scalefont setfont
+	1.5 0 moveto
+	% (abc!"#$「キャッチャー！」)
+	<616263212223248175834c8383836283608383815b81498176> % SJIS
+	crossmark show crossmark
+
+	/cmapname /UniJIS-UTF8-V def
+	fontname cmapname ttfVerticalFixupFont
+	1 array astore /Test exch cmapname exch composefont
+	0.5 scalefont setfont
+	3 0 moveto
+	% (abc!"#$「キャッチャー！」)
+	<61626321222324
+	e3808ce382ade383a3e38383e38381e383a3e383bcefbc81e3808d> % UTF-8
+	crossmark show crossmark
+
+	/cmapname /UniJIS-UTF16-V def
+	fontname cmapname ttfVerticalFixupFont
+	1 array astore /Test exch cmapname exch composefont
+	0.5 scalefont setfont
+	4.5 0 moveto
+	% (abc!"#$「キャッチャー！」)
+	<0061006200630021002200230024300c30ad30e330c330c130e330fcff01300d> % UCS2
+	crossmark show crossmark
+
+	showpage
+} exec

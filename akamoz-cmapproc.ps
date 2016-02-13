@@ -1,0 +1,288 @@
+%!PS-Adobe 3.0
+% $Id: akamoz-strbuf.ps 55 2013-11-24 08:12:26Z you $
+%
+% Copyright (c) 2016 akamoz.jp
+% All rights reserved.
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are met:
+%
+% 1. Redistributions of source code must retain the above copyright notice,
+% this list of conditions and the following disclaimer.
+%
+% 2. Redistributions in binary form must reproduce the above copyright notice,
+% this list of conditions and the following disclaimer in the documentation
+% and/or other materials provided with the distribution.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+% POSSIBILITY OF SUCH DAMAGE.
+
+%---------------------------------------------------------------------
+% CMap Utilityes
+%---------------------------------------------------------------------
+
+currentglobal
+true setglobal
+
+1 dict begin % localdict
+
+/localdebug { pop } def
+
+/ProcSetVersion (0.1) def	% re-define into procset dict later.
+
+1 dict begin % subr
+/cmapprocDebug { pop } def
+/cmapprocVerbose { pop } def
+/cmapprocMoreVerbose { pop } def
+/aprintDebug { cmapprocDebug { aprint flush } cmapprocDebug } def
+/aprintVerbose { cmapprocVerbose { aprint flush } cmapprocVerbose } def
+/aprintMoreVerbose {
+	cmapprocMoreVerbose { aprint flush } cmapprocMoreVerbose
+} def
+
+currentdict end % subr
+/subr exch def
+
+1 dict begin % cmapproc.ps.akamoz.jp
+
+/ProcSetVersion ProcSetVersion def
+/ProcSetName (cmapproc.ps.akamoz.jp) def
+
+{
+	ProcSetName print ( version ) print
+	ProcSetVersion print (\n) print
+} localdebug
+
+% - <cmapDefineCIDInitProcSet> procsetdict
+/cmapDefineCIDInitProcSet {
+	currentglobal
+	false setglobal
+
+	1 dict begin % procset-localdict
+
+	% resourcename filenamestr <preprsc> rscdict
+	/preprsc {
+		systemdict /findlibfile known {	% running on ghostscript
+			findlibfile {
+				{ (running ) print 1 index print (\n) print flush }
+				//localdebug exec
+				cvx exec pop
+			} { pop } ifelse
+		} { pop } ifelse
+		/ProcSet findresource
+	} bind def
+
+	/proclist [
+		/util.ps.akamoz.jp (akamoz-util.ps) preprsc
+		//subr
+	] def
+
+	% proc <prepproc> proc'
+	%	bind proc with proclist (defined above) dictionary.
+	%	currentdict keeps on top of the dictstack.
+	/prepproc {
+		1 dict begin
+		/p exch def
+		[
+			{ currentdict end } { } forall
+			proclist { /begin cvx } forall
+			/begin cvx
+			/p load { } forall
+			{ currentdict end } { } forall
+			proclist length { /end cvx } repeat
+			/begin cvx
+		] cvx
+		end
+	} bind def
+
+	1 dict begin	% CIDInitProcSet
+
+	/CMapList 1 dict def
+
+	/begincmap {
+		(begincmap\n) aprintDebug
+		/CodeMap 5 dict def
+		CodeMap begin
+		/ForwardCMap 1 dict def
+		/ReverseCMap 1 dict def
+		/BaseCMaps [ ] def
+		end
+	} prepproc bind def
+
+	/usecmap [ CMapList {
+		1 dict begin
+			/cmaplist exch def
+			/BaseCMapName exch def
+			[ (usecmap: cmapname=) BaseCMapName ] aprintDebug
+			/CMap /Category findresource begin
+				BaseCMapName 256 string ResourceFileName
+			end
+			[ ( filename=) 2 index ] aprintVerbose
+			(\n) aprintDebug
+			(r) file /File exch def
+			File cvx protected-exec
+			File closefile
+			CodeMap begin
+				[ cmaplist BaseCMapName get BaseCMaps aload pop ]
+				/BaseCMaps exch def
+			end
+		end
+	} /exec cvx ] cvx prepproc bind def
+
+	/begincodespacerange {
+		(begincodespacerange ... ) aprintVerbose
+		mark
+	} prepproc bind def
+
+	/endcodespacerange {
+		(endcodespacerange\n) aprintVerbose
+		cleartomark pop
+	} prepproc bind def
+
+	/beginnotdefrange {
+		(beginnotdefrange ... ) aprintVerbose
+		mark
+	} prepproc bind def
+
+	/endnotdefrange {
+		(endnotdefrange\n) aprintVerbose
+		cleartomark pop
+	} prepproc bind def
+
+	/begincidchar {
+		(begincidchar ... ) aprintDebug
+		/cidchar mark
+	} prepproc bind def
+
+	/append2dict{
+		2 index 2 index known {
+			2 index 2 index get
+			[ exch dup type /arraytype eq {
+				aload pop
+			} if
+			counttomark 1 add index ]
+			exch pop put
+		} {
+			put
+		} ifelse
+	} prepproc bind def
+
+	/endcidchar {
+		(endcidchar\n) aprintDebug
+		CodeMap begin
+		] exch /cidchar ne { /endcidchar-notbegin trap } if
+		1 index 2 mul 1 index length ne { /endcidchar-length trap } if
+		exch {
+			1 index exch 2 mul 2 getinterval aload pop
+			ForwardCMap
+				2 index [ (  ) << /S /hex >> 3 index ] aprintVerbose
+				2 index [ ( -> ) 2 index (\n) ] aprintVerbose
+				append2dict
+			ReverseCMap exch 2 index append2dict pop
+		} repeat-count
+		pop
+		end
+	} prepproc bind def
+
+	/begincidrange {
+		/cidrange (begincidrange ... ) aprintDebug
+		mark
+	} prepproc bind def
+
+	/endcidrange {
+		CodeMap begin
+		(endcidrange\n) aprintDebug
+		] exch /cidrange ne { /endcidrange-notbegin trap } if
+		1 index 3 mul 1 index length ne { /endcidrange-length trap } if
+		exch {
+			1 index exch 3 mul 3 getinterval
+			[ (  ) << /S /hex >> 3 index 0 get << /S /char >> ( ... )
+				<< /S /hex >> 7 index 1 get << /S /char >> ( -> )
+				10 index 2 get (\n) ] aprintVerbose
+			dup 0 get length 1 index 2 get
+			2 index 0 get str2num 1 4 index 1 get str2num {
+				2 index string num2str
+				ForwardCMap
+					1 index [ (    ) << /S /hex >> 3 index ] aprintMoreVerbose
+					3 index [ ( -> ) 2 index (\n) ] aprintMoreVerbose
+					put
+				ReverseCMap 2 index 2 index append2dict
+				% workaround for GS
+				3 index 1 get eq { exit } if
+				1 add
+			} for
+			pop pop pop
+		} repeat-count
+		pop
+		end
+	} prepproc bind def
+
+	/endcmap {
+		(endcmap\n) aprintDebug
+	} prepproc bind def
+
+	% key inst cat <defineresource> inst
+	/defineresource [ CMapList {
+		[ (defineresource: cat=) 3 index ( name=) 7 index (\n) ] aprintDebug
+		exch /CMap ne { /defrsc0 trap } if
+		3 -1 roll 2 index put
+	} /exec cvx ] cvx prepproc bind def
+
+	currentdict end	% CIDInitProcSet
+	/CIDInit exch /ProcSet defineresource
+
+	end % procset-localdict
+	exch setglobal
+} bind def	% cmapDefineCIDInitProcSet
+
+/cmapUndefineCIDInitProcSet {
+	currentglobal
+	false setglobal
+	/CIDInit /ProcSet undefineresource
+	setglobal
+} bind def
+
+% cmap cid <cmapCheckReverseCMap> bool
+/cmapCheckReverseCMap {
+	2 dict begin
+	/cid exch def
+	/CodeMap get /codemap exch def
+	codemap /ReverseCMap get cid known {
+		true
+	} {
+		false codemap /BaseCMaps get {
+			cid cmapCheckReverseCMap { pop true exit } if
+		} forall
+	} ifelse
+	end
+} bind def
+
+% cmap str <cmapLookupForwardCMap> ( cid true | false )
+/cmapLookupForwardCMap {
+	2 dict begin
+	/str exch def
+	/CodeMap get /codemap exch def
+	codemap /ForwardCMap get dup str known {
+		str get true
+	} {
+		pop
+		false codemap /BaseCMaps get {
+			str cmapLookupForwardCMap { exch pop true exit } if
+		} forall
+	} ifelse
+	end
+} bind def
+
+/cmapproc.ps.akamoz.jp currentdict /ProcSet defineresource pop
+end % cmapproc.ps.akamoz.jp
+end % localdict
+
+setglobal
