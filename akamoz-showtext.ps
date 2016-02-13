@@ -1,0 +1,162 @@
+%!PS-Adobe 3.0
+% $Id: akamoz-util.ps 73 2015-03-01 10:31:57Z you $
+%
+% Copyright (c) 2016 akamoz.jp
+% All rights reserved.
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are met:
+%
+% 1. Redistributions of source code must retain the above copyright notice,
+% this list of conditions and the following disclaimer.
+%
+% 2. Redistributions in binary form must reproduce the above copyright notice,
+% this list of conditions and the following disclaimer in the documentation
+% and/or other materials provided with the distribution.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+% POSSIBILITY OF SUCH DAMAGE.
+
+currentglobal
+true setglobal
+
+1 dict begin % localdict
+
+/localdebug { pop } def
+
+/ProcSetVersion (0.1) def	% re-define into procset dict later.
+
+1 dict begin % AlignShowUtil
+
+% bbox offest ratio <itp> num
+%	interpolation
+/itp {
+	3 dict begin
+	/r exch def
+	/o exch def
+	/b exch def
+	r null eq { 0 } { b o get 1 r sub mul b o 2 add get r mul add } ifelse
+	end
+} bind def
+
+% draw bbox for debugging
+/bbox {
+	gsave
+	0 setlinewidth
+	currentpoint translate
+	newpath
+	dup 0 get 1 index 1 get moveto
+	dup 2 get 1 index 1 get lineto
+	dup 2 get 1 index 3 get lineto
+	dup 0 get 1 index 3 get lineto
+	closepath stroke
+	pop
+	grestore
+} bind def
+
+currentdict end
+/AlignShowUtil exch def
+
+1 dict begin % showtext.ps.akamoz.jp
+
+/ProcSetVersion ProcSetVersion def
+/ProcSetName (showtext.ps.akamoz.jp) def
+
+{
+	ProcSetName print ( version ) print
+	ProcSetVersion print (\n) print
+} localdebug
+
+% subfont str dict <alignshow> -
+% subfont str array <alignshow> -
+% subfont str num <alignshow> -
+%	PX: primary font alignment, X direction
+%	PY:	same for Y direction
+%	SX: secondary font alignment, X direction
+%	SY: same for Y direction
+/alignshow {
+	//AlignShowUtil begin
+	1 dict begin
+	dup type /dicttype eq {
+		{ def } forall
+	} { dup type /arraytype eq {
+		dup length 2 ne { /alignshow-param trap } if
+		aload pop /PY exch def /PX exch def
+	} {
+		currentfont /WMode knownget not { 0 } if
+		dup 0 eq { pop /PY exch def } {
+		dup 1 eq { pop /PX exch def } {
+			% default
+			/alignshow-wmode trap
+		} ifelse } ifelse
+	} ifelse } ifelse
+	/s exch def
+	/f exch def
+	/PX null ckdef
+	/PY null ckdef
+	/PHS (fgM) ckdef
+	/SX PX ckdef
+	/SY PY ckdef
+	/SHS s ckdef
+	/NX SX ckdef
+	/NY SY ckdef
+
+	gsave matrix currentmatrix nulldevice setmatrix
+	0 0 moveto
+	PHS false charpath flattenpath pathbbox
+	4 array astore /bb1 exch def
+	newpath
+	0 0 moveto
+	f setfont
+	SHS false charpath flattenpath pathbbox
+	4 array astore /bb2 exch def
+	grestore
+
+%	bb1 bbox
+	/dx bb1 0 PX itp def
+	/dy bb1 1 PY itp def
+	dx bb2 0 SX itp sub dy bb2 1 SY itp sub rmoveto
+	gsave
+%	gsave 1 0 0 setrgbcolor bb2 bbox grestore
+	currentpoint
+	f setfont s show
+	currentpoint 4 array astore /cp exch def
+	grestore
+	NX null eq { cp 2 get } { cp 0 get bb2 0 NX itp add } ifelse dx sub
+	NY null eq { cp 3 get } { cp 1 get bb2 1 NY itp add } ifelse dy sub moveto
+	end
+	end
+} bind def
+
+% test code
+{
+	72 -72 scale
+	0.5 -10.5 translate
+	/vertfont /DFPKaiSho-Md /EUC-V ttfComposeVerticalFont
+%	/vertfont /MS-Gothic /EUC-V ttfComposeVerticalFont
+	[ 1 0 0 -1 0 0 ] makefont def
+	/subfont /Times-Roman findfont [ 1 0 0 -1 0 0 ] makefont
+%	0.5 scalefont
+%	90 matrix rotate makefont
+	def
+	5 0 moveto
+	vertfont setfont
+	(ÉÔ»àÄ») show
+	subfont (Akamoz) [ 0.5 0 ] alignshow
+	gsave 0.05 setlinewidth 1 setlinecap 0 0 rlineto stroke grestore
+	(¡ª) show
+	showpage
+} pop
+
+/showtext.ps.akamoz.jp currentdict /ProcSet defineresource pop
+end % showtext.ps.akamoz.jp
+end % localdict
+setglobal

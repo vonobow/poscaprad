@@ -1,4 +1,6 @@
 %!PS-Adobe 3.0
+% $Id: akamoz-util.ps 73 2015-03-01 10:31:57Z you $
+%
 % Copyright (c) 2016 akamoz.jp
 % All rights reserved.
 % Redistribution and use in source and binary forms, with or without
@@ -23,6 +25,17 @@
 % ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 % POSSIBILITY OF SUCH DAMAGE.
 
+currentglobal
+true setglobal
+
+1 dict begin % localdict
+
+/localdebug { pop } def
+
+/ProcSetVersion (0.1) def	% re-define into procset dict later.
+
+1 dict begin % subr
+
 /ttfprocDebug { pop } def
 /ttfprocVerbose { pop } def
 /ttfprocMoreVerbose { pop } def
@@ -34,540 +47,6 @@
 
 /MaxStringBuffer 256 def
 
-% value object key [ vokput ] -
-/vokput { 2 index put pop } bind def
-
-% <dict> <key> knownget ( <val> true ) | false
-% knownget has same functionality as .knownget in GS.
-/knownget {
-	2 copy known { get true } { pop pop false } ifelse
-} bind def
-
-% <key> <default> defaultload <value>
-/defaultload {
-	exch dup where {
-		exch get exch pop
-	} {
-		pop
-	} ifelse
-} bind def
-
-% proc <protected-exec> -
-%	dictionary stack is poped, execute proc,
-%	then the dictionary stack is restored.
-%	exit will be trapped. if exit is executed in proc, exit is re-executed,
-%	and "exited" is set to true, false otherwise.
-/protected-exec {
-	1 {
-		/exited true def
-		[ /exec cvx currentdict ] cvx end exec
-		/exited false put
-	} [ /repeat cvx currentdict ] cvx exec begin
-	exited { exit } if
-} bind def
-
-% <obj> <proc> exec-forall -
-/exec-forall {
-	1 index type /arraytype eq {
-		forall
-	} {
-		1 exch repeat
-	} ifelse
-} bind def
-
-% array proc <for-array> -
-%	procspec: array num <proc> -
-/for-array {
-	1 dict begin
-	/p exch def
-	/a exch def
-	0 1 a length 1 sub {
-		a exch /p load protected-exec
-	} for
-	end
-} bind def
-
-% array proc <for-array-rev> -
-%	procspec: array num <proc> -
-/for-array-rev {
-	1 dict begin
-	/p exch def
-	/a exch def
-	a length 1 sub -1 0 {
-		a exch /p load protected-exec
-	} for
-	end
-} bind def
-
-% num proc <repeat-count> -
-/repeat-count {
-	exch 1 sub exch 0 1 4 2 roll for
-} bind def
-
-% str <str2num> num
-/str2num {
-	0 exch { exch 8 bitshift add } forall
-} bind def
-
-% str | name <strdup> str'
-/strdup {
-	dup length string cvs
-} bind def
-
-% str1 str2 <strcat> str'
-/strcat {
-	2 dict begin
-	/str2 exch def
-	/str1 exch def
-	str1 length str2 length add string
-	dup 0 str1 putinterval
-	dup str1 length str2 putinterval
-	end
-} bind def
-
-% num str <num2str> str
-/num2str {
-	1 dict begin
-	/s exch def
-	s {
-		2 index 255 and put
-		-8 bitshift
-	} for-array-rev
-	pop s end
-} bind def
-
-% arrayofstr <concatallstring> str
-/concatallstring {
-	dup 0 exch { length add } forall
-	string exch
-	0 exch {
-		dup length exch
-		3 index exch 3 index exch putinterval
-		add
-	} forall pop
-} bind def
-
-% - [ strbufCreate ] strbuf
-/strbufCreate {
-	<< /buf () /pos 0 >>
-} def
-
-% strbuf <strbufLength> int
-/strbufLength {
-	/pos get
-} bind def
-
-% strbuf len [ strbufRealloc ] -
-/strbufRealloc {
-	2 dict begin
-	/len exch def
-	/strbuf exch def
-	strbuf /buf get length
-	dup len lt {
-		2 mul
-		dup len lt { pop len } if
-		{ (realloc to ) print dup == } pop
-		string dup 0 strbuf /buf get putinterval strbuf /buf vokput
-	} {
-		pop
-	} ifelse
-	end
-} bind def
-
-% strbuf str [ strbufAppend ] -
-/strbufAppend {
-	1 index begin
-	3 dict begin
-	/str exch def
-	/strbuf exch def
-	/newlen pos str length add def
-	strbuf newlen strbufRealloc
-	buf pos str putinterval
-	strbuf /pos newlen put
-	end end
-} bind def
-
-% strbuf [ strbufGetString ] string
-/strbufGetString {
-	begin
-	buf 0 pos getinterval
-	end
-} bind def
-
-% str num <splitstring> substrtail substrhead
-/splitstring {
-	2 dict begin
-	/n exch def
-	/s exch def
- 	s n s length n sub getinterval
-	s 0 n getinterval
-	end
-} bind def
-
-% file num <forward> -
-/forward {
-	1 index fileposition add setfileposition
-} bind def
-
-/aprint-float-digits {
-	dup 0.1 mul 0.05 add floor exch % div val
-	1 index 10 mul sub round	% div mod
-	dup 0 lt { pop (0) } {
-	dup 9 gt { pop (9) } {
-		cvi 1 string cvs	% default
-	} ifelse } ifelse exch
-} bind def
-
-/aprint-longval-divmod10 {
-	1 dict begin
-	/m 0 def
-	/f true def
-	[ exch {
-		m 256 mul add dup 10 idiv exch
-		10 mod /m exch def
-		dup 0 eq f and { pop } if
-		/f false def
-	} forall ]
-	m
-	end
-} bind def
-
-% val width <aprint-float-fixed> str
-/aprint-float-fixed {
-	1 dict begin
-	/prec exch def
-	/val exch def
-	/str strbufCreate def
-	/s 1 string def
-
-	% 符号
-	val 0 lt {
-		str (-) strbufAppend
-		/val val abs def
-	} if
-
-	% 丸めておく
-	/val val 10 prec neg exp 0.5 mul add def
-
-	% 整数部と小数部に分ける
-	/ipart val floor def
-	/fpart val ipart sub def
-
-	% 整数部を256進表現にする。
-	/n 0 def
-	{
-		ipart 1 lt { exit } if
-		/ipart ipart 256 div def
-		/n n 8 add def
-		n 5000 gt { /aprint-float-overflow trap } if
-	} loop
-	/ipart [ ipart n 8 idiv {
-		256 mul dup floor cvi exch 1 index sub
-	} repeat pop ] def
-
-	% 下位桁から10進分解する。
-	mark {
-		ipart length 0 eq { exit } if
-		ipart aprint-longval-divmod10 exch /ipart exch def
-	} loop
-
-	% 文字列に直す
-	{
-		dup mark eq { exit } if
-		s cvs str exch strbufAppend
-	} loop
-	pop
-
-	% 空っぽなら0を追加
-	str strbufLength 0 eq { str (0) strbufAppend } if
-
-	% 小数部
-	str (.) strbufAppend
-	fpart prec {
-		10 mul dup floor dup cvi s cvs
-		str exch strbufAppend
-		sub
-	} repeat pop
-
-	str strbufGetString
-	end
-} bind def
-
-% str align width aprint-align -
-/aprint-align {
-	2 index length	% str align width len
-	sub	% str align width-len
-	dup 0 le {
-		pop pop print
-	} { exch dup /right eq {	% str width-len align
-		pop { ( ) print } repeat print
-	} { dup /left eq {
-		pop exch print { ( ) print } repeat
-	} { type /stringtype eq {
-		1 index 0 1 getinterval (-) eq {
-			(-) print { A print } repeat
-			1 1 index length 1 sub getinterval print
-		} {
-			{ A print } repeat print
-		} ifelse
-	} {
-		/aprint-align trap
-	} ifelse } ifelse } ifelse } ifelse
-} def
-
-% str <aprint-format-string> str'
-/aprint-format-string {
-	S /char eq {
-		% do nothing.
-	} { S /hex eq {
-		[ (<)
-		2 index {
-			16 2 string cvrs
-			dup length 2 lt { (0) exch } if
-		} forall
-		(>) ] concatallstring exch pop
-	} {
-		/aprint-format-string trap
-	} ifelse } ifelse
-} bind def
-
-% array <aprint> -
-% anyother <aprint> -
-/aprint {
-	1 dict begin
-	/W 0 def	% field width
-	/P 6 def	% precision
-	/A /right def	% align: /right, /left or string to fill
-	/F /fixed def	% floating point format
-	/S /char def	% string format, /hex: postscript hexstring
-	/R 10 def	% radix
-	{ 1 {
-		dup type /integertype eq { R 32 string cvrs A W aprint-align exit } if
-		dup type /realtype eq { P aprint-float-fixed A W aprint-align exit } if
-		dup type /dicttype eq { { def } forall exit } if
-		dup type /nametype eq { dup length string cvs } if % fall through
-		dup type /stringtype eq {
-			aprint-format-string A W aprint-align exit
-		} if
-		dup type /booleantype eq {
-			{ (true) } { (false) } ifelse print exit
-		} if
-		/aprint trap
-	} repeat } exec-forall
-	end
-} def
-
-/dstack {
-	(--- ) print aprint ( ---\n) print
-	pstack
-	(---------\n) print flush
-} bind def
-
-/ddump {
-	(=== ) print aprint ( ===\n) print
-	dup { exch aprint ( ) print == } forall
-	(=========\n) print flush
-} bind def
-
-/dval {
-	dup aprint (=) print load ==
-} bind def
-
-% str <charbytes> num
-/charbytesUTF8 {
-	0 get
-	dup 16#80 lt { 1 } {
-	dup 16#c2 lt { /charbytesUTF8 trap } {
-	dup 16#e0 lt { 2 } {
-	dup 16#f0 lt { 3 } {
-	dup 16#f8 lt { 4 } {
-		/charbytesUTF8 trap	% default
-	} ifelse } ifelse } ifelse } ifelse } ifelse
-	exch pop
-} bind def
-
-/charbytesUCS2 {
-	pop 2
-} bind def
-
-/charbytesUTF16BE {
-	0 get
-	dup 16#d8 lt { 2 } {
-	dup 16#dc lt { 4 } {
-	dup 16#e0 lt { /charbytesUTF16 trap } {
-		2	% default
-	} ifelse } ifelse } ifelse
-} bind def
-
-/charbytesUTF32 {
-	pop 4
-} bind def
-
-% num <checkUnicode> num
-/checkUnicode {
-	dup 16#d800 lt { } {
-	dup 16#e000 lt { /checkUnicode trap } {
-	dup 16#110000 lt { } {
-		/checkUnicode trap % default
-	} ifelse } ifelse } ifelse
-} bind def
-
-% str <decode> num
-
-/decodeUTF8Mask [ 16#ff 16#1f 16#0f 16#07 ] def
-/decodeUTF8Limit [ 0 16#80 16#800 16#10000 ] def
-
-% str <decodeUTF8> substrtail num
-/decodeUTF8 {
-	2 dict begin
-	/s exch def
-	s charbytesUTF8
-	s 1 index splitstring pop exch
-	1 sub /taillen exch def
-	s 0 get //decodeUTF8Mask taillen get and
-	s 1 taillen getinterval
-	{
-		dup 16#80 lt { /decodeUTF8b trap } if
-		dup 16#c0 ge { /decodeUTF8c trap } if
-		16#3f and exch 6 bitshift add
-	} forall
-	checkUnicode
-	dup //decodeUTF8Limit taillen get lt { /decodeutf8d trap } if
-	end
-} bind def
-
-currentdict /decodeUTF8Mask undef
-currentdict /decodeUTF8Limit undef
-
-% num <encodeUTF8> str
-/encodeUTF8 {
-	1 dict begin
-	/u exch def
-	u 16#80 lt {
-		1 string dup 0 u put
-	} {
-		u 16#800 lt { 2 16#c0 } {
-		u 16#10000 lt { 3 16#e0 } {
-		u 16#110000 lt { 4 16#f0 } {
-			/encodeUTF8 trap	% default
-		} ifelse } ifelse } ifelse
-		/msb exch def
-		dup string exch
-		1 sub -6 mul /bs exch def
-		dup {
-			u bs bitshift 16#3f and msb or put
-			/msb 16#80 def
-			/bs bs 6 add def
-		} for-array
-	} ifelse
-	end
-} bind def
-
-% str <_decodeUCS2> num
-/_decodeUCS2 {
-	dup 1 get exch 0 get 8 bitshift add
-} bind def
-
-% str <decodeUCS2> substrtail num
-/decodeUCS2 {
-	2 splitstring
-	_decodeUCS2
-	checkUnicode
-} bind def 
-
-% str num <_encodeUCS2> str
-/_encodeUCS2 {
-	1 index 0 2 index -8 bitshift put
-	1 index exch 1 exch 16#ff and put
-} bind def
-
-% num <encodeUCS2> str
-/encodeUCS2 {
-	checkUnicode
-	dup 16#10000 ge { /encodeUCS2 trap } if
-	2 string exch _encodeUCS2
-} bind def
-
-% str <decodeUTF16> substrtail num
-/decodeUTF16 {
-	2 splitstring _decodeUCS2
-	dup 16#dc00 ge 1 index 16#e000 lt and { /decodeUTF16a trap } if
-	dup 16#d800 ge 1 index 16#dc00 lt and {
-		exch 2 splitstring _decodeUCS2	% hi substr lo
-		dup 16#dc00 lt 1 index 16#e000 ge or { /decodeUTF16b trap } if
-		3 -1 roll	% substr lo hi
-		16#3ff and 10 bitshift exch 16#3ff and add 16#10000 add
-	} if
-	checkUnicode
-} bind def
-
-% num <encodeUTF16> str
-/encodeUTF16 {
-	checkUnicode
-	dup 16#10000 lt {
-		2 string exch _encodeUCS2
-	} {
-		16#10000 sub
-		4 string exch
-		dup 16#3ff and 16#dc00 add exch
-		-10 bitshift 16#d800 add
-		2 index 0 2 getinterval exch _encodeUCS2 pop
-		1 index 2 2 getinterval exch _encodeUCS2 pop
-	} ifelse
-} bind def
-
-% str <decodeUTF32> num
-/decodeUTF32 {
-	4 splitstring 0 exch {
-		exch 8 bitshift add
-	} forall
-	checkUnicode
-} bind def
-
-% num <encodeUTF32> num
-/encodeUTF32 {
-	checkUnicode
-	4 string exch 1 index {
-		3 exch sub
-		2 index 16#ff and put
-		-8 bitshift
-	} for-array
-	pop
-} bind def
-
-% str dec-encproc <convertstring> str'
-%	dec-encproc: str <dec-encproc> substrtail strchar
-/convertstring {
-	1 dict begin
-	/decenc exch def
-	[ exch {
-		dup length 0 eq { exit } if
-		/decenc load protected-exec exch
-	} loop pop ]
-	concatallstring
-	end
-} bind def
-
-% strarray pos size <getstrarray> substr true
-% strarray pos size <getstrarray> false
-/getstrarray {
-	4 dict begin
-	/sz exch def
-	sz mul /pos exch def
-	/got false def
-	{
-		/s exch def
-		pos s length lt {
-			s pos sz getinterval
-			/got true def
-			exit
-		} if
-		/pos pos s length sub def
-	} exec-forall
-	got
-	end
-} bind def
-
 % proc <moreverbose> -
 /moreverbose {
 	1 dict begin
@@ -578,6 +57,13 @@ currentdict /decodeUTF8Limit undef
 	end
 } bind def
 
+/n2 { b2 str2num } bind def
+/n4 { b4 str2num } bind def
+/off2 { n2 Offset add } bind def
+/off4 { n4 Offset add } bind def
+/setpos { FontFile exch setfileposition } bind def
+/fwd { FontFile fileposition add setpos } bind def
+
 % file num <bindfilebuffer> obj
 /bindfilebuffer {
 	[
@@ -586,18 +72,26 @@ currentdict /decodeUTF8Limit undef
 	] cvx
 } bind def
 
-1 dict begin % ttfprocUtility
+/charproc {
+	/charproc.ps.akamoz.jp /ProcSet findresource
+} bind def
 
-/n2 { b2 str2num } bind def
-/n4 { b4 str2num } bind def
-/off2 { n2 Offset add } bind def
-/off4 { n4 Offset add } bind def
-/setpos { FontFile exch setfileposition } bind def
-/fwd { FontFile fileposition add setpos } bind def
+/cmapproc {
+	/cmapproc.ps.akamoz.jp /ProcSet findresource
+} bind def
+
+% str <printversion> -
+/printversion {
+	str2num [
+		1 index -16 bitshift (.)
+		<< /R 16 /W 4 /A (0) >> 4 index 16#ffff and
+	] aprint
+	pop
+} bind def
 
 /ckver {
 	/Version b4 def
-	{ ( ver=) print Version ttfPrintVersion } ttfprocDebug
+	{ ( ver=) print Version printversion } ttfprocDebug
 	Version gt { /ttfver trap } if
 } bind def
 
@@ -640,7 +134,7 @@ currentdict /decodeUTF8Limit undef
 	array exch 1 index def
 	{
 		n2 [ ( ) 2 index ] aprintVerbose put
-	} for-array
+	} for-elem
 } bind def
 
 % name num <offtbl> -
@@ -648,7 +142,7 @@ currentdict /decodeUTF8Limit undef
 	array exch 1 index def
 	{
 		off2 [ ( ) 2 index ] aprintVerbose put
-	} for-array
+	} for-elem
 } bind def
 
 % num <tagoff> -
@@ -659,12 +153,101 @@ currentdict /decodeUTF8Limit undef
 	} repeat
 } bind def
 
-currentdict end
-/ttfprocUtility exch def
+% strarray pos size <getstrarray> substr true
+% strarray pos size <getstrarray> false
+/getstrarray {
+	4 dict begin
+	/sz exch def
+	sz mul /pos exch def
+	/got false def
+	{
+		/s exch def
+		pos s length lt {
+			s pos sz getinterval
+			/got true def
+			exit
+		} if
+		/pos pos s length sub def
+	} exec-forall
+	got
+	end
+} bind def
+
+% dict copyfont dict'
+/copyfont {
+	dup length dict copy
+	dup /FID undef
+	dup /UIDBase undef
+	dup /UniqueID undef
+	begin
+	currentdict /XUID known {
+		XUID 0 get 1000000 ge {
+			/XUID [ XUID aload pop ] def
+			XUID 0 XUID 0 get 1 add put
+		} {
+			/XUID [ 1000000 XUID aload pop ] def
+		} ifelse
+	} {
+		/XUID [ 1000000 1 ] def
+	} ifelse
+	currentdict end
+} bind def
+
+% cidmap copyCIDMap cidmap'
+% currentdict is used as font.
+/copyCIDMap {
+	dup type /arraytype eq {
+		[ exch { dup length string copy } forall ]
+	} {
+		dup length string copy
+	} ifelse
+} bind def
+
+currentdict end % subr
+/subr exch def
+
+% resourcename filenamestr <preprsc> rscdict
+/preprsc {
+	systemdict /findlibfile known {	% running on ghostscript
+		findlibfile {
+			{ (running ) print 1 index print (\n) print flush } localdebug
+			cvx exec pop
+		} { pop } ifelse
+	} { pop } ifelse
+	/ProcSet findresource
+} bind def
+
+/proclist [
+	/util.ps.akamoz.jp (akamoz-util.ps) preprsc
+	/strbuf.ps.akamoz.jp (akamoz-strbuf.ps) preprsc
+	subr
+] def
+
+% proc <prepproc> proc'
+%	bind proc with proclist (defined above) dictionary.
+/prepproc {
+	1 dict begin
+	/p exch def
+	[
+		proclist { /begin cvx } forall
+		/p load { } forall
+		proclist length { /end cvx } repeat
+	] cvx
+	end
+} bind def
+
+1 dict begin % ttfproc.ps.akamoz.jp
+
+/ProcSetVersion ProcSetVersion def
+/ProcSetName (ttfproc.ps.akamoz.jp) def
+
+{
+	ProcSetName print ( version ) print
+	ProcSetVersion print (\n) print
+} localdebug
 
 % file <ttfReadTTCHeader> otfdict
 /ttfReadTTCHeader {
-	//ttfprocUtility begin
 	1 dict begin
 	/FontFile exch def
 	/b2 FontFile 2 bindfilebuffer def
@@ -685,28 +268,17 @@ currentdict end
 		/OffsetTable [ 0 ] def
 	} ifelse
 	(\n) aprintDebug
-	currentdict end end
-} bind def
-
-% str <ttfPrintVersion> -
-/ttfPrintVersion {
-	str2num [
-		1 index -16 bitshift (.)
-		<< /R 16 /W 4 /A (0) >> 4 index 16#ffff and
-	] aprint
-	pop
-} bind def
+	currentdict end
+} prepproc bind def
 
 % otfdict subfontnum <ttfReadTrueTypeHeader> ttfdict
 /ttfReadTrueTypeHeader {
 	exch begin
-	//ttfprocUtility begin
 	1 dict begin
 	/sf exch def
 	(TrueType Offset Table ) aprintDebug
 	OffsetTable sf {
 		% copy utility procedures
-		//ttfprocUtility currentdict copy pop
 		/FontFile FontFile def
 		/b2 dup load def
 		/b4 dup load def
@@ -725,8 +297,8 @@ currentdict end
 			>> def
 		} repeat end
 	} retr
-	end end end
-} bind def
+	end end
+} prepproc bind def
 
 % otfdict | ttfdict <ttfCloseFontFile> -
 /ttfCloseFontFile {
@@ -737,7 +309,7 @@ currentdict end
 		/FontFile null def
 	} if
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict <ttfReadNameTable> ttfdict namedict
 /ttfReadNameTable {
@@ -767,13 +339,15 @@ currentdict end
 				/String n2 StringOffset add
 				[ ( off=) 2 index ] aprintVerbose
 				>> put
-			} for-array
+			} for-elem
 		} {
 			/ttfnamefmt0 trap
 		} ifelse
 	} retr
 	end
-} bind def
+} prepproc bind def
+
+subr begin
 
 % decode table for platform ID 3
 /ttfNameDecodePF3 <<
@@ -793,8 +367,11 @@ currentdict end
 	end
 } bind def
 
+end % subr
+
 % ttfdict <ttfGetFontName> ttfdict str
 /ttfGetFontName {
+	charproc begin
 	dup begin
 	1 dict begin
 	/got false def
@@ -818,8 +395,8 @@ currentdict end
 		dup /String exch def
 		[ ( string=) String (\n) ] aprintDebug
 	} if
-	end end end
-} bind def
+	end end end end
+} prepproc bind def
 
 % font <ttfFindFontTable> (ttfdict true) | false
 /ttfFindFontTable {
@@ -843,7 +420,7 @@ currentdict end
 	} repeat-count	% ttfdict |
 	got { true } { otf ttfCloseFontFile false } ifelse
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict id <ttfCheckSupport> ttfdict bool
 /ttfCheckSupport {
@@ -863,7 +440,7 @@ currentdict end
 		end
 	} retr pop
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict <ttfReadMaxpTable> ttfdict
 % 	maxp table specific informations are stored in maxp dict.
@@ -878,7 +455,7 @@ currentdict end
 		end
 	} retr pop
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict <ttfReadOS2Table> ttfdict
 /ttfReadOS2Table {
@@ -892,7 +469,7 @@ currentdict end
 		end
 	} retr pop
 	end
-} bind def
+} prepproc bind def
 
 { %========== these are unused ==========
 
@@ -911,7 +488,7 @@ currentdict end
 			/EncodingID n2 [ ( enc=) 2 index ] aprintDebug
 			/Offset off4 [ ( off=) 2 index ] aprintDebug
 			>> put
-		} for-array
+		} for-elem
 	} retr
 	end
 } bind def
@@ -928,7 +505,7 @@ currentdict end
 		end
 		{ /got true def exit } if
 		pop pop
-	} for-array
+	} for-elem
 	got
 	end
 } bind def
@@ -988,7 +565,9 @@ currentdict end
 		[ ( numhmtx=) NumberOfMetrics ] aprintDebug
 	} retr
 	end
-} bind def
+} prepproc bind def
+
+subr begin
 
 % ttfdict ( hheadict | vheadict ) id <ttfReadMetricsTable> ttfdict mtxdict
 %	metrics values are normalized.
@@ -1007,10 +586,12 @@ currentdict end
 			n2 UnitsPerEm div
 			[ ( ) 2 index ] aprintMoreVerbose put
 			2 fwd
-		} for-array
+		} for-elem
 	} retr
 	end end
 } bind def
+
+end % subr
 
 % ttfdict <ttfReadHmtxTable> ttfdict hmtxdict
 /ttfReadHmtxTable {
@@ -1030,7 +611,7 @@ currentdict end
 		[ ( numvmtx=) NumberOfMetrics ] aprintDebug
 	} retr
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict <ttfReadVmtxTable> ttfdict vmtxdict
 /ttfReadVmtxTable {
@@ -1047,7 +628,7 @@ currentdict end
 		ScriptCount tagoff
 	} retr
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict scrldict scriptid <ttfReadScriptTable> ttfdict scrtdict
 /ttfReadScriptTable {
@@ -1062,7 +643,7 @@ currentdict end
 		LangSysCount tagoff
 	} retr
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict scrtdict langid <ttfReadLangSysTable> ttfdict langdict
 /ttfReadLangSysTable {
@@ -1078,7 +659,7 @@ currentdict end
 		/FeatureIndex FeatureCount idxtbl
 	} retr
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict comdict <ttfReadFeatureList> ttfdict ftrldict ftrrec
 /ttfReadFeatureList {
@@ -1091,11 +672,11 @@ currentdict end
 			[ (\n  ) 2 index (:) ] aprintVerbose
 			<< /Tag b4 cvn [ ( tag=) 2 index ] aprintVerbose
 			/Offset off2 [ ( off=) 2 index ] aprintVerbose >> put
-		} for-array
+		} for-elem
 	} retr
 	dup /FeatureRecord get
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict ftrrec idx <ttfReadFeatureTable> ttfdict ftrtdict luidxarray
 /ttfReadFeatureTable {
@@ -1112,7 +693,7 @@ currentdict end
 	} retr
 	dup /LookupListIndex get
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict comdict <ttfReadLookupList> ttfdict lupldict luarray
 /ttfReadLookupList {
@@ -1125,7 +706,7 @@ currentdict end
 	} retr
 	dup /Lookup get
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict luarray luidx <ttfReadLookupTable> ttfdict lutdict
 /ttfReadLookupTable {
@@ -1146,7 +727,7 @@ currentdict end
 		} if
 	} retr
 	end
-} bind def
+} prepproc bind def
 
 % ttf lsubdict covid <ttfReadCoverageTable> ttf lsubdict covdict
 /ttfReadCoverageTable {
@@ -1163,7 +744,7 @@ currentdict end
 			% create inverse table
 			/CoverageLookup << GlyphArray {
 				exch 1 index get exch
-			} for-array >> def
+			} for-elem >> def
 		} { CoverageFormat 2 eq {
 			/RangeCount n2 def
 			[ ( cnt=) RangeCount ] aprintDebug
@@ -1185,7 +766,7 @@ currentdict end
 		} ifelse } ifelse
 	} retr
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict <ttfReadGSUBTable> ttfdict gsubdict
 /ttfReadGSUBTable {
@@ -1200,7 +781,9 @@ currentdict end
 		[ ( lookup=) LookupList ] aprintDebug
 	} retr
 	end
-} bind def
+} prepproc bind def
+
+subr begin
 
 % substdict begin gid <ttfGSUBType1Subst*Lookup> gid' bool
 /ttfGSUBType1Subst1Lookup {
@@ -1256,6 +839,8 @@ currentdict end
 	end
 } bind def
 
+end % subr
+
 % ttf lutdict <ttfReadGSUBLookupSubTable> ttf lutdict substarray
 /ttfReadGSUBLookupSubTable {
 	1 index begin
@@ -1265,12 +850,12 @@ currentdict end
 			% ttf lutdict aray array index
 			4 index SubTable 2 index ttfReadGSUBLookupType1SubTable
 			exch pop put
-		} for-array
+		} for-elem
 	} {
 		/ttf-gsub-lookuptype trap
 	} ifelse
 	end end
-} bind def
+} prepproc bind def
 
 % ttfdict scriptid langid featureid <ttfFindGSUBTable>
 %	ttfdict ftrrec ftridx true
@@ -1317,7 +902,7 @@ currentdict end
 	} repeat
 	got { ftrrec ftridx true } { false } ifelse
 	end
-} bind def
+} prepproc bind def
 
 % ttfdict scptid langid fturid <ttfGetGSUBTable> ttfdict arrayofarray true
 %	ttfdict false
@@ -1331,24 +916,13 @@ currentdict end
 			3 index lutlst lutidx 3 index get ttfReadLookupTable
 			ttfReadGSUBLookupSubTable
 			3 -2 roll pop pop put
-		} for-array
+		} for-elem
 		true
 		end
 	} {
 		false
 	} ifelse
-} bind def
-
-% gid [ [ substdict ... ] ... ] ttfLookupGlyph gid' bool
-/ttfLookupGlyph {
-	dup type /dicttype eq {
-		begin Lookup end
-	} {
-		{
-			ttfLookupGlyph { exit } if
-		} forall
-	} ifelse
-} bind def
+} prepproc bind def
 
 % dict substarray <ttfMergeCoverage> dict
 /ttfMergeCoverage {
@@ -1366,215 +940,6 @@ currentdict end
 	} {
 		{ ttfMergeCoverage } forall
 	} ifelse
-} bind def
-
-%---------------------------------------------------------------------
-% CMap Utilityes
-%---------------------------------------------------------------------
-
-% - <ttfDefineCIDInitProcSet> procsetdict
-/ttfDefineCIDInitProcSet {
-
-currentglobal
-false setglobal
-
-1 dict begin	% CIDInitProcSet
-
-/CMapList 1 dict def
-
-/begincmap {
-	(begincmap\n) aprintDebug
-	/CodeMap 5 dict def
-	CodeMap begin
-	/ForwardCMap 1 dict def
-	/ReverseCMap 1 dict def
-	/BaseCMaps [ ] def
-	end
-} bind def
-
-/usecmap [ CMapList {
-	1 dict begin
-		/cmaplist exch def
-		/BaseCMapName exch def
-		[ (usecmap: cmapname=) BaseCMapName ] aprintDebug
-		/CMap /Category findresource begin
-			BaseCMapName 256 string ResourceFileName
-		end
-		[ ( filename=) 2 index ] aprintVerbose
-		(\n) aprintDebug
-		(r) file /File exch def
-		File cvx protected-exec
-		File closefile
-		CodeMap begin
-			[ cmaplist BaseCMapName get BaseCMaps aload pop ]
-			/BaseCMaps exch def
-		end
-	end
-} /exec cvx ] cvx bind def
-
-/begincodespacerange {
-	(begincodespacerange ... ) aprintVerbose
-	mark
-} bind def
-
-/endcodespacerange {
-	(endcodespacerange\n) aprintVerbose
-	cleartomark pop
-} bind def
-
-/beginnotdefrange {
-	(beginnotdefrange ... ) aprintVerbose
-	mark
-} bind def
-
-/endnotdefrange {
-	(endnotdefrange\n) aprintVerbose
-	cleartomark pop
-} bind def
-
-/begincidchar {
-	(begincidchar ... ) aprintDebug
-	/cidchar mark
-} bind def
-
-/append2dict{
-	2 index 2 index known {
-		2 index 2 index get
-		[ exch dup type /arraytype eq {
-			aload pop
-		} if
-		counttomark 1 add index ]
-		exch pop put
-	} {
-		put
-	} ifelse
-} bind def
-
-/endcidchar {
-	(endcidchar\n) aprintDebug
-	CodeMap begin
-	] exch /cidchar ne { /endcidchar-notbegin trap } if
-	1 index 2 mul 1 index length ne { /endcidchar-length trap } if
-	exch {
-		1 index exch 2 mul 2 getinterval aload pop
-		ForwardCMap
-			2 index [ (  ) << /S /hex >> 3 index ] aprintVerbose
-			2 index [ ( -> ) 2 index (\n) ] aprintVerbose
-			append2dict
-		ReverseCMap exch 2 index append2dict pop
-	} repeat-count
-	pop
-	end
-} bind def
-
-/begincidrange {
-	/cidrange (begincidrange ... ) aprintDebug
-	mark
-} bind def
-
-/endcidrange {
-	CodeMap begin
-	(endcidrange\n) aprintDebug
-	] exch /cidrange ne { /endcidrange-notbegin trap } if
-	1 index 3 mul 1 index length ne { /endcidrange-length trap } if
-	exch {
-		1 index exch 3 mul 3 getinterval
-		[ (  ) << /S /hex >> 3 index 0 get << /S /char >> ( ... )
-			<< /S /hex >> 7 index 1 get << /S /char >> ( -> )
-			10 index 2 get (\n) ] aprintVerbose
-		dup 0 get length 1 index 2 get
-		2 index 0 get str2num 1 4 index 1 get str2num {
-			2 index string num2str
-			ForwardCMap
-				1 index [ (    ) << /S /hex >> 3 index ] aprintMoreVerbose
-				3 index [ ( -> ) 2 index (\n) ] aprintMoreVerbose
-				put
-			ReverseCMap 2 index 2 index append2dict
-			% workaround for GS
-			3 index 1 get eq { exit } if
-			1 add
-		} for
-		pop pop pop
-	} repeat-count
-	pop
-	end
-} bind def
-
-/endcmap {
-	(endcmap\n) aprintDebug
-} bind def
-
-% key inst cat <defineresource> inst
-/defineresource [ CMapList {
-	[ (defineresource: cat=) 3 index ( name=) 7 index (\n) ] aprintDebug
-	exch /CMap ne { /defrsc0 trap } if
-	3 -1 roll 2 index put
-} /exec cvx ] cvx bind def
-
-currentdict end	% CIDInitProcSet
-/CIDInit exch /ProcSet defineresource
-
-exch setglobal
-
-} bind def	% ttfDefineCIDInitProcSet
-
-/ttfUndefineCIDInitProcSet {
-	currentglobal
-	false setglobal
-	/CIDInit /ProcSet undefineresource
-	setglobal
-} bind def
-
-% dict copyfont dict'
-/copyfont {
-	dup length dict copy
-	dup /FID undef
-	dup /UIDBase undef
-	dup /UniqueID undef
-	begin
-	/XUID [ 1000000 XUID aload pop ] def
-	currentdict end
-} bind def
-
-% cidmap copyCIDMap cidmap'
-% currentdict is used as font.
-/copyCIDMap {
-	dup type /arraytype eq {
-		[ exch { dup length string copy } forall ]
-	} {
-		dup length string copy
-	} ifelse
-} bind def
-
-% cmap cid <ttfCheckReverseCMap> bool
-/ttfCheckReverseCMap {
-	2 dict begin
-	/cid exch def
-	/CodeMap get /codemap exch def
-	codemap /ReverseCMap get cid known {
-		true
-	} {
-		false codemap /BaseCMaps get {
-			cid ttfCheckReverseCMap { pop true exit } if
-		} forall
-	} ifelse
-	end
-} bind def
-
-% cmap str <ttfLookupForwardCMap> ( cid true | false )
-/ttfLookupForwardCMap {
-	2 dict begin
-	/str exch def
-	/CodeMap get /codemap exch def
-	codemap /ForwardCMap get dup str known {
-		str get true
-	} {
-		pop
-		false codemap /BaseCMaps get {
-			str ttfCheckReverseCMap { exch pop true exit } if
-		} forall
-	} ifelse
-	end
 } bind def
 
 % ttf featuretable <ttfGetGSUBSubstDict> dict
@@ -1595,10 +960,11 @@ exch setglobal
 		} forall
 	} ttfprocMoreVerbose
 	end
-} bind def
+} prepproc bind def
 
 % font cmap <ttfFixupVerticalMode> font'
 /ttfFixupVerticalMode {
+	cmapproc begin
 	1 dict begin
 
 	dup type /dicttype eq { /CMapName get } if
@@ -1626,8 +992,9 @@ exch setglobal
 	begin cmapname 256 string ResourceFileName end
 	[ (getting filename for ) cmapname (: ) 4 index (\n) ] aprintDebug
 	(r) file dup cvx
-	/cmaplist ttfDefineCIDInitProcSet /CMapList get def
+	/cmaplist cmapDefineCIDInitProcSet /CMapList get def
 	exec closefile
+	cmapUndefineCIDInitProcSet
 
 	cidfont copyfont begin
 	currentdict /subst_CID_on_WMode undef
@@ -1662,7 +1029,7 @@ exch setglobal
 			[ (\n  ) << /S /hex >> mapchar ] aprintVerbose
 			[ (: vcid=) << /W 6 /A /left >> vcid ] aprintVerbose
 			1 {
-				hcmap mapchar ttfLookupForwardCMap not {
+				hcmap mapchar cmapLookupForwardCMap not {
 					(no horizchar) aprintVerbose exit
 				} if
 				/hcid exch def
@@ -1760,13 +1127,12 @@ exch setglobal
 	currentdict end
 	fontname exch /CIDFont defineresource
 
-	ttfUndefineCIDInitProcSet
 	exch setglobal
 
-	end
-} bind def
+	end end
+} prepproc bind def
 
-% fontname cmapname <ttfComposeVerticalFont> font'
+% fontname cmapname <ttfComposeVerticalFont> font
 /ttfComposeVerticalFont {
 	2 dict begin
 	/cmapname exch def
@@ -1774,120 +1140,45 @@ exch setglobal
 	fontname strdup (-) strcat cmapname strdup strcat
 	cmapname [ fontname cmapname ttfFixupVerticalMode ] composefont
 	end
-} bind def
+} prepproc bind def
 
-% key value <ckdef> -
-%	check and define. define value as key if key is not defined in currentdict.
-/ckdef {
-	currentdict 2 index known { pop pop } { def } ifelse
-} bind def
-
-% bbox offest ratio <itp> num
-%	interpolation
-/itp {
-	3 dict begin
-	/r exch def
-	/o exch def
-	/b exch def
-	r null eq { 0 } { b o get 1 r sub mul b o 2 add get r mul add } ifelse
-	end
-} bind def
-
-% draw bbox for debugging
-/bbox {
-	gsave
-	0 setlinewidth
-	currentpoint translate
-	newpath
-	dup 0 get 1 index 1 get moveto
-	dup 2 get 1 index 1 get lineto
-	dup 2 get 1 index 3 get lineto
-	dup 0 get 1 index 3 get lineto
-	closepath stroke
-	pop
-	grestore
-} bind def
-
-% subfont str dict <ttfGenericAlignShow> -
-% subfont str array <ttfGenericAlignShow> -
-% subfont str num <ttfGenericAlignShow> -
-%	PX: primary font alignment, X direction
-%	PY:	same for Y direction
-%	SX: secondary font alignment, X direction
-%	SY: same for Y direction
-/ttfGenericAlignShow {
-	1 dict begin
-	dup type /dicttype eq {
-		{ def } forall
-	} { dup type /arraytype eq {
-		dup length 2 ne { /ttfGenericAlignShow-param trap } if
-		aload pop /PY exch def /PX exch def
+% fontname cmapname <ttfFindVerticalFont> font
+%	find verticalfont specified by fontname and cmapname from
+%	ttfVerticalFontCache. If the font is not found in the cache,
+%	call ttfComposeVerticalFont and cache it.
+%	ttfVerticalFontCache is created in userdict automatically.
+/ttfFindVerticalFont {
+	currentglobal false setglobal
+	5 dict begin
+	/PreviousGlobal exch def
+	userdict /ttfVerticalFontCache 2 copy known {
+		get /fontcache exch def
 	} {
-		currentfont /WMode knownget not { 0 } if
-		dup 0 eq { pop /PY exch def } {
-		dup 1 eq { pop /PX exch def } {
-			% default
-			/ttfGenericAlignShow-wmode trap
-		} ifelse } ifelse
-	} ifelse } ifelse
-	/s exch def
-	/f exch def
-	/PX null ckdef
-	/PY null ckdef
-	/PHS (fgM) ckdef
-	/SX PX ckdef
-	/SY PY ckdef
-	/SHS s ckdef
-	/NX SX ckdef
-	/NY SY ckdef
-
-	gsave matrix currentmatrix nulldevice setmatrix
-	0 0 moveto
-	PHS false charpath flattenpath pathbbox
-	4 array astore /bb1 exch def
-	newpath
-	f setfont
-	0 0 moveto
-	SHS false charpath flattenpath pathbbox
-	4 array astore /bb2 exch def
-	grestore
-
-%	bb1 bbox
-	/dx bb1 0 PX itp def
-	/dy bb1 1 PY itp def
-	dx bb2 0 SX itp sub dy bb2 1 SY itp sub rmoveto
-	gsave
-%	gsave 1 0 0 setrgbcolor bb2 bbox grestore
-	currentpoint
-	f setfont s show
-	currentpoint 4 array astore /cp exch def
-	grestore
-	NX null eq { cp 2 get } { cp 0 get bb2 0 NX itp add } ifelse dx sub
-	NY null eq { cp 3 get } { cp 1 get bb2 1 NY itp add } ifelse dy sub moveto
+		1 dict dup /fontcache exch def put
+	} ifelse
+	/cmapname exch def
+	/fontname exch def
+	/vcfn fontname <00> strcat cmapname strcat def
+	fontcache vcfn known {
+		fontcache vcfn get
+	} {
+		fontname cmapname ttfComposeVerticalFont
+		fontcache vcfn 2 index put
+	} ifelse
+	PreviousGlobal setglobal
 	end
-} bind def
+} prepproc bind def
 
-% test code
-{
-	72 -72 scale
-	0.5 -10.5 translate
-	/vertfont /DFPKaiSho-Md /EUC-V ttfComposeVerticalFont
-%	/vertfont /MS-Gothic /EUC-V ttfComposeVerticalFont
-	[ 1 0 0 -1 0 0 ] makefont def
-	/subfont /Times-Roman findfont [ 1 0 0 -1 0 0 ] makefont
-%	0.5 scalefont
-%	90 matrix rotate makefont
-	def
-	5 0 moveto
-	vertfont setfont
-	(不死鳥) show
-	subfont (Akamoz) [ 0.5 0 ] ttfGenericAlignShow
-	gsave 0.05 setlinewidth 1 setlinecap 0 0 rlineto stroke grestore
-	(！) show
-	showpage
-} pop
+/ttfproc.ps.akamoz.jp currentdict /ProcSet defineresource pop
+end % ttfproc.ps.akamoz.jp
+end % localdict
+
+setglobal
 
 {
+	/util.ps.akamoz.jp /ProcSet findresource { def } forall
+	/ttfproc.ps.akamoz.jp /ProcSet findresource begin
+	1 dict begin % localdict
 	/encodings [
 		<<
 			/HCmap /90ms-RKSJ-H
@@ -1915,7 +1206,6 @@ exch setglobal
 		>>
 	] def
 	/fonts [ /MS-PMincho /MS-Mincho /MS-PGothic /IPAexMincho /DFPKaiSho-Md ] def
-
 	fonts {
 		/f exch def
 		encodings {
@@ -1944,6 +1234,9 @@ exch setglobal
 			end
 		} forall
 	} forall
+	end % localdict
+	end % ttfproc.ps.akamoz.jp
+
 	/end dstack
 	[ (dictstack depth: ) countdictstack (\n) ] aprint
 } pop
