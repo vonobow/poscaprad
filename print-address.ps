@@ -1,4 +1,6 @@
 %!PS-Adobe 3.0
+% $Id: akamoz-util.ps 73 2015-03-01 10:31:57Z you $
+%
 % Copyright (c) 2016 akamoz.jp
 % All rights reserved.
 % Redistribution and use in source and binary forms, with or without
@@ -23,49 +25,62 @@
 % ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 % POSSIBILITY OF SUCH DAMAGE.
 
+/printAddressDebug { exec } def
 /print-address-version (0.1) def
+/print-address-filename (print-address.ps) def
 
-/NONATIVEFONTMAP true def
+{
+	print-address-filename print ( version ) print
+	print-address-version print (\n) print
+} printAddressDebug
+
 [ {Catalog} << /PageLayout /SinglePage >> /PUT pdfmark
 
-(drawline.ps) runlibfile
-
-/mm [ 72 25.4 div /mul cvx ] cvx bind def
-
-% name value <setdef> -
-/setdef {
-	1 index where {
-		pop pop pop
+% filename <ckrun> -
+/ckrun {
+	systemdict /findlibfile known {	% running on ghostscript
+		findlibfile {
+			{ (running ) print 1 index print (\n) print flush }
+			printAddressDebug
+			cvx exec pop
+		} {
+			pop
+		} ifelse
 	} {
-		def
+		pop
 	} ifelse
 } bind def
 
+% resourcename filenamestr <preprsc> rscdict
+/preprsc {
+	ckrun /ProcSet findresource
+} bind def
+
+currentdict
+/util.ps.akamoz.jp (akamoz-util.ps) preprsc begin
+/charproc.ps.akamoz.jp (akamoz-charproc.ps) preprsc begin
+/ttfproc.ps.akamoz.jp (akamoz-ttfproc.ps) preprsc begin
+begin % currentdict
+(drawline.ps) runlibfile
+
+/NONATIVEFONTMAP true def
+/mm [ 72 25.4 div /mul cvx ] cvx bind def
 /NoInitScript false setdef
 /NoDefaultScript false setdef
 
 NoInitScript not {
-	(print-address-init.ps) findlibfile {
-		exch (runnig ) print print ( ... ) print flush
-		cvx exec
-		(done.\n) print flush
-	} {
-		pop
-	} ifelse
+	(print-address-init.ps) ckrun
 } if
 
 NoDefaultScript not {
-	(HOME) getenv {
-		(/.ghostscript/print-address-default.ps) strcat
-		{ (r) file } stopped {
-			$error /errorname get /undefinedfilename ne {
-				stop
-			} if
-			$error /newerror false put
-		} {
+	systemdict /getenv known { (HOME) getenv {
+		(/.ghostscript/print-address-default.ps) strcat dup
+		ckfile {
+			[ (runnig ) 3 index (\n) ] aprint flush
 			cvx exec
-		} ifelse
-	} if
+		} if
+		pop
+	} if } if
 } if
 
 /encoding /EUC setdef
@@ -95,7 +110,7 @@ NoDefaultScript not {
 /adr-height { adr-top-ypos adr-bottom-ypos sub abs } def
 /adr-indent-height { adr-height adr-indent sub } def
 
-/hyphen-fontname /Courier setdef
+/hyphen-fontname { adr-hfontname } setdef
 
 /name-top 25 mm setdef
 /name-bottom 2 mm setdef
@@ -133,17 +148,6 @@ NoDefaultScript not {
 /current-lineoff { current-linewidth 0.5 mul } bind def
 
 /verticalhome { paper-width paper-height moveto } bind def
-
-/DebugDump true def
-/dump {
-	/DebugDump false defaultload {
-		(----- ) print print ( -----\n) print
-		pstack
-		(--------------------\n) print
-	} {
-		pop
-	} ifelse
-} bind def
 
 /rrect {
 	2 dict begin
@@ -238,24 +242,13 @@ NoDefaultScript not {
 	end
 } bind def
 
-/drawline-fontcache 1 dict def
-
 % vfontname hfontname size pitch <drawline-setfont> -
 /drawline-setfont {
 	/current-linepitch exch def
 	/current-fontsize exch def
 	findfont current-fontsize scalefont /drawline-hfont exch def
-	1 dict begin
-	strdup /vfn exch def
-	/vcfn vfn (-) strcat CMapName strdup strcat def
-	drawline-fontcache vcfn known {
-		drawline-fontcache vcfn get
-	} {
-		vfn CMapName ttfComposeVerticalFont
-		drawline-fontcache vcfn 2 index put
-	} ifelse
+	CMapName ttfFindVerticalFont
 	current-fontsize scalefont setfont
-	end
 	hyphen-fontname findfont current-fontsize scalefont
 	/drawline-hyphen-font exch def
 } bind def
@@ -417,7 +410,7 @@ encoding /EUC eq {
 		begin
 		20 dict begin
 
-		(page: ) print pagecnt 32 string cvs print ( ... ) print flush
+		[ (page: ) pagecnt ( ... ) ] aprint flush
 		/draw-zip-frame false defaultload { zipframe } if
 		ZIP dup length dup 7 lt { /zip trap } if 8 gt { /zip trap } if
 		zip-fontname findfont 5.4 mm scalefont setfont
@@ -569,5 +562,9 @@ encoding /EUC eq {
 		end end
 	} repeat
 } loop
-end
+end % addressbook-default
+end % currentdict
+end % ttfproc.ps.akamoz.jp
+end % charproc.ps.akamoz.jp
+end % util.ps.akamoz.jp
 quit
