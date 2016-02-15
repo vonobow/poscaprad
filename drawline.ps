@@ -93,50 +93,65 @@ currentdict % caller's dict
 	extractchar
 	c (%) eq {
 		extractchar
-		c (\() eq {
-			% %(...%) ひとまとめにして /center 文字列 false を置く。
-			/s () def
-			{
-				extractchar
-				c (%) eq {
+		1 {
+			c (\() eq {
+				% %(...%) ひとまとめにして /center 文字列 false を置く。
+				/s () def
+				{
 					extractchar
 					c (%) eq {
-						/s s c strcat def
-					} { c (\)) eq {
-						exit
+						extractchar
+						c (%) eq {
+							/s s c strcat def
+						} { c (\)) eq {
+							exit
+						} {
+							/drawline3 trap
+						} ifelse } ifelse
 					} {
-						/drawline3 trap
-					} ifelse } ifelse
-				} {
-					/s s c strcat def
-				} ifelse
-			} loop
-			/center s false
-			/cc cc 1 add def
-		} { c ({) eq {
-			% 置換無効、回転有効にして false を置く。
-			/subst false def
-			/rot true def
-			false
-		} { c (}) eq {
-			% 置換有効、回転無効に戻して false を置く。
-			/subst true def
-			/rot false def
-			false
-		} { c (%) eq {	% %そのもの。
-			c true
-			/cc cc 1 add def
-		} { c (>) eq {	% 上タブ位置出力
-			/ttab false
-		} { c (<) eq {	% 下タブ位置出力
-			/btab false
-		} { c ([) eq {	% 出力禁止
-			/dis false
-		} { c (]) eq {	% 出力再開
-			/ena false
-		} {
+						/s s c strcat def
+					} ifelse
+				} loop
+				/center s false
+				/cc cc 1 add def
+				exit
+			} if
+			c ({) eq {
+				% 置換無効、回転有効にして false を置く。
+				/subst false def
+				/rot true def
+				false
+				exit
+			} if
+			c (}) eq {
+				% 置換有効、回転無効に戻して false を置く。
+				/subst true def
+				/rot false def
+				false
+				exit
+			} if
+			c (%) eq {	% %そのもの。
+				c true
+				/cc cc 1 add def
+				exit
+			} if
+			c (>) eq {	% 上タブ位置出力
+				/ttab false exit
+			} if
+			c (<) eq {	% 下タブ位置出力
+				/btab false exit
+			} if
+			c ([) eq {	% 出力禁止
+				/dis false exit
+			} if
+			c (]) eq {	% 出力再開
+				/ena false exit
+			} if
+			c (+) eq {	% トンボ描画
+				/tombo false exit
+			} if
 			/drawline1 trap
-		} ifelse } ifelse } ifelse } ifelse } ifelse } ifelse } ifelse } ifelse
+		} repeat
 	} {
 		% 通常の文字。
 		c true
@@ -321,6 +336,17 @@ currentdict % caller's dict
 			/moveonly true def
 			exit
 		} if
+		x /tombo eq {
+			gsave initmatrix
+			/tombosize 12 setdef
+			0 setlinewidth
+			tombosize -0.5 mul 0 rmoveto
+			tombosize 0 rlineto
+			tombosize -0.5 mul dup rmoveto
+			0 tombosize rlineto stroke
+			grestore
+			exit
+		} if
 		x /hstr eq {
 			% 次のループでheightstringにデータが取り込まれる
 			/hs true def
@@ -393,6 +419,8 @@ begin % caller's dict
 %			heightやAlignを無視して描画した文字列高さ。
 %		/DrawingHeight (出力)
 %			実際の描画高さ。/CalcOnlyがtrueの場合は設定されない。
+%		/CharCount (出力)
+%			文字間スペーシングに影響を与える文字の数。
 /drawline {
 	1 dict begin 1 {
 
@@ -421,6 +449,7 @@ begin % caller's dict
 			} if
 		} loop
 	] def
+	opt /CharCount cc put
 
 	% 文字列高さを求める
 	gsave
