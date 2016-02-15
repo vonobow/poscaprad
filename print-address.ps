@@ -321,19 +321,22 @@ NoDefaultScript not {
 % 差出人連名処理の設定。姓と名を別々に指定する。
 % draw-retlist-infoという辞書に必要な情報が出力される。
 /draw-retlist-setup {
-	10 dict begin
+	15 dict begin
 	/gn exch def
 	/fn exch def
 	/h retname-top-ypos retname-bottom-ypos sub abs def
 	/opt << /CalcOnly true >> def
 	gsave
 	fn 0 opt drawline opt /StringHeight get /fh exch def
+	/fc opt /CharCount get def
 	gn 0 opt drawline opt /StringHeight get /gh exch def
+	/gc opt /CharCount get def
 	/spc current-fontsize retname-spacing mul def
 	/totalheight fh spc add gh add def
 	totalheight h lt {
-		/fh h spc sub fh mul fh gh add div def
-		/gh h fh sub spc sub def
+		/gap h totalheight sub fc gc add 1 sub div def
+		/fh fh gap fc 1 sub mul add def
+		/gh gh gap gc 1 sub mul add def
 	} {
 		h totalheight div
 		dup fh mul /fh exch def
@@ -356,7 +359,7 @@ NoDefaultScript not {
 	gsave
 	y2 retname-bottom-ypos << /Align /Justify >> draw-address
 	grestore
-	retname-top-ypos y1 << /Align /Justify /Continue true >> draw-address
+	retname-top-ypos y1 << /Align /Justify >> draw-address
 	end
 } bind def
 
