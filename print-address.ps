@@ -74,12 +74,7 @@ NoInitScript not {
 
 NoDefaultScript not {
 	systemdict /getenv known { (HOME) getenv {
-		(/.ghostscript/print-address-default.ps) strcat dup
-		ckfile {
-			[ (runnig ) 3 index (\n) ] aprint flush
-			cvx exec
-		} if
-		pop
+		(/.ghostscript/print-address-default.ps) strcat ckrun
 	} if } if
 } if
 
