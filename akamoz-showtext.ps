@@ -109,7 +109,9 @@ currentdict end
 	/NX SX ckdef
 	/NY SY ckdef
 
-	gsave matrix currentmatrix nulldevice setmatrix
+	% GS seems to not do initmatrix,
+	% when nulldevice is executed if it was already selected.
+	gsave nulldevice matrix currentmatrix 0 get abs 2 lt { 16 16 scale } if
 	0 0 moveto
 	PHS false charpath flattenpath pathbbox
 	4 array astore /bb1 exch def

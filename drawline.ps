@@ -266,8 +266,12 @@ currentdict % caller's dict
 				/toptab false def
 			} if
 			moveonly {
-				gsave currentpoint matrix currentmatrix
-				nulldevice setmatrix moveto
+				gsave currentpoint
+				% GS seems to not do initmatrix,
+				% when nulldevice is executed if it was already selected.
+				nulldevice matrix currentmatrix
+				0 get abs 2 lt { 16 16 scale } if
+				moveto
 			} if
 			rot {
 				rf -90 matrix rotate makefont x
@@ -453,8 +457,11 @@ begin % caller's dict
 
 	% 文字列高さを求める
 	gsave
-		currentpoint matrix currentmatrix
-		nulldevice setmatrix moveto
+		currentpoint
+		% GS seems to not do initmatrix,
+		% when nulldevice is executed if it was already selected.
+		nulldevice matrix currentmatrix 0 get abs 2 lt { 16 16 scale } if
+		moveto
 		/settab calconly def
 		currentpoint /y0 exch def pop
 		strlist hstr drawline-draw
@@ -491,6 +498,9 @@ begin % caller's dict
 
 	} repeat end
 } prepproc bind def
+
+end % caller's dict
+end % localdict
 
 {
 	/charproc.ps.akamoz.jp /ProcSet findresource begin
@@ -530,8 +540,9 @@ begin % caller's dict
 	(オ%[ーシャンビューが素敵なレジデンスAkamoz%(VIII%)123-10号%]室) h opt drawline
 
 	showpage
+
+	/util.ps.akamoz.jp /ProcSet findresource { def } forall
+	/end dstack
+	[ (dictstack depth: ) countdictstack (\n) ] aprint
 	quit
 } pop
-
-end % caller's dict
-end % localdict
