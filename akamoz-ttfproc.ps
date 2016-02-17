@@ -198,7 +198,7 @@ true setglobal
 currentdict end % subr
 /subr exch def
 
-% resourcename filenamestr <preprsc> rscdict
+% resourcename filenamestr <reprsc> resourcename
 /preprsc {
 	systemdict /findlibfile known {	% running on ghostscript
 		findlibfile {
@@ -206,7 +206,6 @@ currentdict end % subr
 			cvx exec pop
 		} { pop } ifelse
 	} { pop } ifelse
-	/ProcSet findresource
 } bind def
 
 /proclist [
@@ -219,16 +218,14 @@ currentdict end % subr
 
 % proc <prepproc> proc'
 %	bind proc with proclist (defined above) dictionary.
-/prepproc {
-	1 dict begin
-	/p exch def
-	[
-		proclist { /begin cvx } forall
-		/p load { } forall
-		proclist length { /end cvx } repeat
-	] cvx
-	end
-} bind def
+/prepproc { [
+	proclist {
+		dup type /dicttype ne { /ProcSet /findresource cvx } if
+		/begin cvx
+	} forall
+	counttomark 1 add index aload pop
+	proclist length { /end cvx } repeat
+] cvx exch pop } bind def
 
 1 dict begin % ttfproc.ps.akamoz.jp
 
