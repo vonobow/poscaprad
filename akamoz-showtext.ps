@@ -65,6 +65,18 @@ true setglobal
 currentdict end
 /AlignShowUtil exch def
 
+% resourcename filenamestr <reprsc> resourcename
+/preprsc {
+	systemdict /findlibfile known {	% running on ghostscript
+		findlibfile {
+			{ (running ) print 1 index print (\n) print flush } localdebug
+			cvx exec pop
+		} { pop } ifelse
+	} { pop } ifelse
+} bind def
+
+/util.ps.akamoz.jp (akamoz-util.ps) preprsc pop
+
 1 dict begin % showtext.ps.akamoz.jp
 
 /ProcSetVersion ProcSetVersion def
@@ -83,6 +95,7 @@ currentdict end
 %	SX: secondary font alignment, X direction
 %	SY: same for Y direction
 /alignshow {
+	/util.ps.akamoz.jp /ProcSet findresource begin
 	//AlignShowUtil begin
 	1 dict begin
 	dup type /dicttype eq {
@@ -134,8 +147,9 @@ currentdict end
 	grestore
 	NX null eq { cp 2 get } { cp 0 get bb2 0 NX itp add } ifelse dx sub
 	NY null eq { cp 3 get } { cp 1 get bb2 1 NY itp add } ifelse dy sub moveto
-	end
-	end
+	end % localdict
+	end % AlignShowUtil
+	end % util.ps.akamoz.jp
 } bind def
 
 % test code
