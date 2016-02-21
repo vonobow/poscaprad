@@ -1002,6 +1002,7 @@ end % subr
 	} if
 
 	(fixup CIDMap for vertical writing mode ... ) aprintDebug
+	/OriginalCIDMap CIDMap def
 	/CIDMap CIDMap copyCIDMap def
 
 	1 dict begin	% vertical-subst
@@ -1016,7 +1017,6 @@ end % subr
 		} if
 		/hcmap basecmap 0 get def
 
-		/replace 1 dict def
 		vcodemap /ForwardCMap get {
 			/vcid exch def
 			/mapchar exch def
@@ -1029,7 +1029,7 @@ end % subr
 				/hcid exch def
 				[ (hcid=) << /W 6 /A /left >> hcid ] aprintVerbose
 
-				CIDMap hcid GDBytes getstrarray not {
+				OriginalCIDMap hcid GDBytes getstrarray not {
 					(no glyph) aprintVerbose exit
 				} if
 				str2num /hgid exch def
@@ -1041,33 +1041,12 @@ end % subr
 				/vgid vertsubst hgid get def
 				[ (vgid=) << /W 6 /A /left >> vgid ] aprintVerbose
 
-				% vgid may become source of vertsubst or not?
-				vertsubst vgid known {
-					(shared) aprintVerbose exit
-				} if
-
 				CIDMap vcid GDBytes getstrarray not {
 					(no gid in cidmap) aprintVerbose exit
 				} if
 				[ (\(orig=) 2 index str2num (\))] aprintVerbose
-				pop
-
-				replace vcid known {
-					replace vcid get vgid ne {
-						[ (\n\033[1mWARNING: CID ) vcid ( is bound to GID )
-						  replace vcid get ( and ) vgid (.\033[m) ] aprintDebug
-					} if
-					exit
-				} if
-				replace vcid vgid put
+				vgid exch num2str pop
 			} repeat
-		} forall
-		replace {
-			exch CIDMap exch GDBytes getstrarray {
-				num2str pop
-			} {
-				/ttfproc-CIDMap-replace trap
-			} ifelse
 		} forall
 	} repeat
 	(\n) aprintVerbose
