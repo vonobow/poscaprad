@@ -480,7 +480,7 @@ end % subr
 		} for-elem
 	} retr
 	end
-} bind def
+} prepproc bind def
 
 % ttf pf enc <ttfCheckCmapTable> ttf ( cmaparray idx true ) | false
 /ttfCheckCmapTable {
@@ -497,7 +497,9 @@ end % subr
 	} for-elem
 	got
 	end
-} bind def
+} prepproc bind def
+
+subr begin
 
 % ttf <ttfReadCmapSubtableFormat12> ttf
 %	 use currentdict as cmapdict.
@@ -521,6 +523,8 @@ end % subr
 	currentdict end /CharToGlyphMap exch def
 } bind def
 
+end
+
 % ttf cmaparray idx <ttfReadCmapSubtable> ttf cmapdict
 /ttfReadCmapSubtable {
 	2 index begin
@@ -537,8 +541,7 @@ end % subr
 		} repeat
 	} retr
 	end
-	quit
-} bind def
+} prepproc bind def
 
 } pop %========== end of unused portion ==========
 
@@ -1175,11 +1178,20 @@ setglobal
 			/Arrows <2191219321902192>
 			/Katakana <300c30ad30e330c330c130e330fcff01300d>
 			/Ansi <006100620063>
-			/PuncSpace <ff3b0020ff3dff3b3000ff3d>
+			/PuncSpace <fe41fe42ff3b0020ff3dff3b3000ff3d>
+		>>
+		<<
+			/HCmap /UniJIS-UTF32-H
+			/VCmap /UniJIS-UTF32-V
+			/Arrows <00002191000021930000219000002192>
+			/Katakana <0000300c000030ad000030e3000030c3000030c1000030e3000030fc0000ff010000300d>
+			/Ansi <000000610000006200000063>
+			/PuncSpace <0000ff3b000000200000ff3d0000ff3b000030000000ff3d>
 		>>
 	] def
 	/fonts [
-		/MS-PMincho /MS-Mincho /MS-PGothic /IPAexMincho /DFPKaiSho-Md
+		/MS-PMincho /MS-Mincho /MS-PGothic /MS-Gothic
+		/IPAexMincho /DFPKaiSho-Md
 	] def
 
 	fonts {
