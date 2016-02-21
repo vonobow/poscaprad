@@ -153,13 +153,12 @@ true setglobal
 	sz mul /pos exch def
 	/got false def
 	{
-		/s exch def
-		pos s length lt {
-			s pos sz getinterval
+		pos 1 index length lt {
+			pos sz getinterval
 			/got true def
 			exit
 		} if
-		/pos pos s length sub def
+		pos exch length sub /pos exch def
 	} exec-forall
 	got
 	end
@@ -954,21 +953,34 @@ end % subr
 
 % font cmap <ttfFixupVerticalMode> font'
 /ttfFixupVerticalMode {
-	1 dict begin
+	currentglobal false setglobal
+	1 dict begin % dictionary is in local VM.
+	/gflag exch def
+	true setglobal % make VM mode global until getting necessary resources.
 
 	dup type /dicttype eq { /CMapName get } if
 	/cmapname exch def
-	dup type /dicttype ne {
+	dup type /dicttype eq {
+		dup /CIDFontName get /fontname exch def
+	} {
 		/fontname exch def
 		fontname /CIDFont findresource
-	} {
-		dup /CIDFontName get /fontname exch def
 	} ifelse
 	/cidfont exch def
 
-	currentglobal
-	false setglobal
+	/CMap /Category findresource
+	begin cmapname 256 string ResourceFileName end
+	/cmapfilename exch def
+	[ (getting filename for ) cmapname (: ) cmapfilename (\n) ] aprintDebug
 
+	false setglobal % creating CMap and font. change VM mode to local.
+
+	% get CMap
+	/cmaplist cmapDefineCIDInitProcSet /CMapList get def
+	cmapfilename (r) file dup cvx exec closefile
+	cmapUndefineCIDInitProcSet
+
+	% get TTF GSUB table
 	cidfont ttfFindFontTable not { /ttf-notfound trap } if
 	/ttfdict exch def
 	ttfdict [
@@ -977,15 +989,8 @@ end % subr
 	] ttfGetGSUBSubstDict
 	/vertsubst exch def
 
-	/CMap /Category findresource
-	begin cmapname 256 string ResourceFileName end
-	[ (getting filename for ) cmapname (: ) 4 index (\n) ] aprintDebug
-	(r) file dup cvx
-	/cmaplist cmapDefineCIDInitProcSet /CMapList get def
-	exec closefile
-	cmapUndefineCIDInitProcSet
-
-	cidfont copyfont begin
+	% copy and fixup font
+	cidfont copyfont begin % cidfont
 	currentdict /subst_CID_on_WMode undef
 	/FontType 42 def
 	/DEVICE /defaultdevice defaultload /pdfwrite ne {
@@ -1113,11 +1118,10 @@ end % subr
 
 	ttfCloseFontFile
 
-	currentdict end
+	currentdict end % cidfont
 	fontname exch /CIDFont defineresource
 
-	exch setglobal
-
+	gflag setglobal
 	end
 } prepproc bind def
 
@@ -1165,6 +1169,7 @@ end % localdict
 setglobal
 
 {
+	1 dict begin
 	/util.ps.akamoz.jp /ProcSet findresource { def } forall
 	/ttfproc.ps.akamoz.jp /ProcSet findresource begin
 	1 dict begin % localdict
@@ -1194,7 +1199,10 @@ setglobal
 			/PuncSpace <ff3b0020ff3dff3b3000ff3d>
 		>>
 	] def
-	/fonts [ /MS-PMincho /MS-Mincho /MS-PGothic /IPAexMincho /DFPKaiSho-Md ] def
+	/fonts [
+		/MS-PMincho /MS-Mincho /MS-PGothic /IPAexMincho /DFPKaiSho-Md
+	] def
+
 	fonts {
 		/f exch def
 		encodings {
@@ -1202,17 +1210,28 @@ setglobal
 			(---------------------------------------------------------\n) print
 			24 24 scale
 			0 33 translate
+			/Courier findfont 0.7 scalefont setfont
+			1 -1 moveto
+			f strdup show
+			( ) show
+			HCmap strdup show
+			( ) show
+			VCmap strdup show
 
 			f VCmap ttfFixupVerticalMode pop
 
+			currentglobal false setglobal
 			/test-V VCmap [ f ] composefont setfont
-			1 -1 moveto
+			setglobal
+			1 -2 moveto
 			Arrows show
 			Katakana show
 			Ansi show
 			PuncSpace show
 
+			currentglobal false setglobal
 			/test-H HCmap [ f ] composefont setfont
+			setglobal
 			-0.5 -1.5 rmoveto
 			Arrows show
 			Katakana show
@@ -1228,4 +1247,5 @@ setglobal
 
 	/end dstack
 	[ (dictstack depth: ) countdictstack (\n) ] aprint
+	end
 } pop
