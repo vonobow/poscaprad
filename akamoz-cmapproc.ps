@@ -1,5 +1,5 @@
 %!PS-Adobe 3.0
-% $Id: akamoz-cmapproc.ps 25 2016-02-13 13:15:51Z you $
+% $Id: akamoz-cmapproc.ps 28 2016-02-22 07:58:57Z you $
 %
 % Copyright (c) 2016 akamoz.jp
 % All rights reserved.
@@ -60,6 +60,10 @@ currentdict end % subr
 	ProcSetName print ( version ) print
 	ProcSetVersion print (\n) print
 } localdebug
+
+/Status <<
+	/CIDInitProcSetDefined false
+>> def
 
 % - <cmapDefineCIDInitProcSet> procsetdict
 /cmapDefineCIDInitProcSet {
@@ -241,6 +245,8 @@ currentdict end % subr
 
 	end % procset-localdict
 	exch setglobal
+
+	//Status /CIDInitProcSetDefined true put
 } bind def	% cmapDefineCIDInitProcSet
 
 /cmapUndefineCIDInitProcSet {
@@ -248,6 +254,20 @@ currentdict end % subr
 	false setglobal
 	/CIDInit /ProcSet undefineresource
 	setglobal
+	//Status /CIDInitProcSetDefined false put
+} bind def
+
+% cmapname <cmapLoadCMap> cmap
+/cmapLoadCMap {
+	currentglobal exch false setglobal
+	//Status /CIDInitProcSetDefined get not {
+		cmapDefineCIDInitProcSet pop
+	} if
+	/CMap /Category findresource begin
+	dup 256 string ResourceFileName
+	end (r) file cvx exec
+	/CIDInit /ProcSet findresource /CMapList get exch get
+	exch setglobal
 } bind def
 
 % cmap cid <cmapCheckReverseCMap> bool
@@ -278,6 +298,17 @@ currentdict end % subr
 			str cmapLookupForwardCMap { exch pop true exit } if
 		} forall
 	} ifelse
+	end
+} bind def
+
+% cmap dict <cmapEnumForwardCMap> -
+/cmapEnumForwardCMap {
+	begin
+	/CodeMap get
+	dup /ForwardCMap get {
+		currentdict 2 index known { pop pop } { def } ifelse
+	} forall
+	/BaseCMaps get { currentdict cmapEnumForwardCMap } forall
 	end
 } bind def
 
