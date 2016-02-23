@@ -1057,46 +1057,46 @@ end % subr
 
 	end	% vertical-subst
 
-	ttfdict /vmtx ttfCheckSupport {
-		1 dict begin	% dict for CDevProc
-		ttfReadOS2Table
-		dup /TypoAscender get /vy exch def
-		ttfReadHmtxTable /AdvanceDistance get /hw exch def
-		/hwmax hw length 1 sub def
+	1 dict begin	% dict for CDevProc
+	(creating CDevProc ... ) aprintDebug
+	ttfdict ttfReadOS2Table
+	dup /TypoAscender get /vy exch def
+	ttfReadHmtxTable /AdvanceDistance get /hw exch def
+	/hwmax hw length 1 sub def
+	/CIDMap CIDMap def
+	/GDBytes GDBytes def
+	/getstrarray dup load def
+	/str2num dup load def
+	/vmtx ttfCheckSupport {
 		ttfReadVmtxTable /AdvanceDistance get /vw exch def
 		/vwmax vw length 1 sub def
-		/CIDMap CIDMap def
-		/GDBytes GDBytes def
-		/getstrarray dup load def
-		/str2num dup load def
-
-		(creating CDevProcTable ... ) aprintDebug
-		/CDevProc [
-			currentdict end	% dict for CDevProc
-			{
-				begin 1 dict begin
-				/cid exch def
-				10 array astore /a exch def
-				/g CIDMap cid GDBytes getstrarray { str2num } { 0 } ifelse def
-				a 0 g hwmax lt { hw g get } { hw hwmax get } ifelse put
-				a 1 0 put
-				a 6 0 put
-				a 7 g vwmax lt { vw g get } { vw vwmax get } ifelse neg put
-				a 8 a 0 get 0.5 mul put
-				a 9 vy put
-				% cid 1 and 231 is half width space.
-				% change height to its width in case of vertical writing.
-				% vx in the array of Metrics2 element hold half of charwidth.
-				false [ 1 231 ] { cid eq { pop true exit } if } forall
-				{ a 7 a 0 get neg put } if
-				a aload pop
-				end end
-			} { } forall
-		] cvx bind def
-		(done.\n) aprintDebug
 	} {
-		(no vmtx table, CDevProc is not created.\n) aprintDebug
+		(no vmtx table, use fixed vertical pitch, ) aprintDebug
+		/vw [ 1 ] def
+		/vwmax 0 def
 	} ifelse
+	/CDevProc [
+		currentdict end	% dict for CDevProc
+		{
+			begin 1 dict begin
+			/cid exch def
+			10 array astore /a exch def
+			/g CIDMap cid GDBytes getstrarray { str2num } { 0 } ifelse def
+			a 0 g hwmax lt { hw g get } { hw hwmax get } ifelse put
+			a 1 0 put
+			a 6 0 put
+			a 7 g vwmax lt { vw g get } { vw vwmax get } ifelse neg put
+			a 8 a 0 get 0.5 mul put
+			a 9 vy put
+			% cid 1 and 231 is half width space.
+			% change height to its width in case of vertical writing.
+			false [ 1 231 ] { cid eq { pop true exit } if } forall
+			{ a 7 a 0 get neg put } if
+			a aload pop
+			end end
+		} { } forall
+	] cvx bind def
+	(done.\n) aprintDebug
 
 	ttfCloseFontFile
 
