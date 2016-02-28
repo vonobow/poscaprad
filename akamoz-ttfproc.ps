@@ -1,5 +1,5 @@
 %!PS-Adobe 3.0
-% $Id: akamoz-ttfproc.ps 27 2016-02-21 14:22:54Z you $
+% $Id: akamoz-ttfproc.ps 30 2016-02-23 13:28:00Z you $
 %
 % Copyright (c) 2016 akamoz.jp
 % All rights reserved.
@@ -68,7 +68,7 @@ true setglobal
 /bindfilebuffer {
 	[
 		3 1 roll string
-		{ readstring not { readstring trap } if } { } forall
+		{ readstring not { /readstring trap } if } { } forall
 	] cvx
 } bind def
 
