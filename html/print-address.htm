@@ -1,0 +1,1495 @@
+<!doctype html>
+<!-- print-address.htm -->
+<html id="top">
+<head>
+	<meta name="viewport" content="initial-scale=1.0">
+	<meta charset="shift_jis">
+	<link rel="stylesheet" type="text/css" href="../manual.css">
+	<title>print-address.ps</title>
+	<style type="text/css"><!--
+	--></style>
+</head>
+<body>
+
+<h1>print-address.ps</h1>
+<p class="revision">Version 0.1.0.<small>0</small> (29 Feb 2016)
+<h2>NAME</h2>
+<p>
+<code>print-address.ps</code>
+- 宛名・差出人を印刷する
+
+<h2>SYNOPSIS</h2>
+<pre class="quote">
+gs [ <em>options</em> ] print-address.ps
+</pre>
+
+<h2>DESCRIPTION</h2>
+
+<p>　
+<code>print-address.ps</code>
+は郵便はがきに宛名・差出人を印刷するGhostscript用のPostScriptプログラムです。
+縦書きには
+<code class="ps"><a href="ttfproc-ps-akamoz.htm">ttfproc.ps.akamoz.jp</a></code>
+ProcSetを使用します。
+他に、
+<code class="ps"><a href="util-ps-akamoz.htm">util.ps.akamoz.jp</a></code>
+・
+<code class="ps"><a href="charproc-ps-akamoz.htm">charproc.ps.akamoz.jp</a></code>
+・
+<code class="ps"><a href="cmapproc-ps-akamoz.htm">cmapproc.ps.akamoz.jp</a></code>
+<code class="ps"><a href="showtext-ps-akamoz.htm">showtext.ps.akamoz.jp</a></code>
+ProcSetと
+<code class="ps">drawline.ps</code>
+を使用します。
+
+<p>　入力ファイルとしてアドレス帳・差出人描画用PostScriptファイル・印刷リストファイルが必要です。
+アドレス帳のデフォルトのファイル名は
+<code>address.ps</code>
+ですが、PostScriptのシンボル
+<code class="ps">address-book-filename</code>
+で変更できます。
+差出人描画用PostScriptファイルのデフォルトのファイル名は
+<code>retadr.ps</code>
+ですが、シンボル
+<code class="ps">return-address-filename</code>
+で変更できます。
+印刷リストファイルのデフォルトのファイル名は
+<code>address.lst</code>
+ですが、シンボル
+<code class="ps">address-list-filename</code>
+で変更できます。
+
+<p>　
+<code>print-address.ps</code>
+は、既に値が設定されている設定値は原則として上書きしません。
+したがって、Ghostscriptコマンドラインや、もし他のPostScriptファイルから呼び出すのであれば、そのPostScriptファイルで設定を変更できます。
+また、住所録から
+<code class="ps">/ID</code>
+が
+<code class="ps">/default</code>
+の項目を探して
+<b class="ps">begin</b>
+、続いて印刷リストファイルで指定されたIDを探してその項目で
+<b class="ps">begin</b>
+し、この辞書スコープの中で実際の描画処理を行います。
+このため、
+<code class="ps">/ID</code>
+が
+<code class="ps">/default</code>
+の項目や、住所録内の各項目で値を定義することで、ほとんどすべての設定をオーバーライドすることが可能です。
+
+<h2>FILE FORMAT</h2>
+
+<dl>
+<dt>文字コード
+<dd>
+<p>　デフォルトの文字コードはEUCです。
+アドレス帳・差出人描画用PostScriptファイルの文字コードがUTF-8の場合、コマンドラインに
+<code>-dencoding=/UTF8</code>
+を追加するか、アドレス帳の
+<code class="ps">/default</code>
+項目に
+<code class="ps">/encoding /UTF8</code>
+を追加してください。
+
+<p>　逆に、コマンドライン側でUTF-8を指定していても、アドレス帳側で
+<code class="ps">/encoding /EUC</code>
+を指定すればEUCになります。
+
+<dt>長さ・距離
+<dd>
+<p>　長さや距離はすべてPostScriptポイント（1/72インチ単位）で指定します。
+<b class="ps">mm</b>
+というプロシージャを使うと、mm単位の値をPostScriptポイントに変換できます。
+
+<dt>文字列
+<dd>
+<p>　「
+<b class="ps">drawline</b>
+のエスケープが使用可能です」と書いてある文字列は、以下のエスケープが使用できます。
+また、
+<code class="ps">drawline-substtable</code>
+による置換を受けます。
+
+<dl>
+<dt>%%
+<dd>
+<p>　文字「%」をあらわします。
+<dt>%( %)
+<dd>
+<p>　囲まれている文字をまとめて横書きします。
+置換処理は行われません。
+<dt>%{ %}
+<dd>
+<p>　囲まれている文字を90度右に回転して（横倒しにして）描画します。
+置換処理は行われません。
+<dt>%[ %]
+<dd>
+<p>　囲まれている文字列を描画しません。
+描画位置は描画したときと同じように進みます。
+<dt>%&lt;
+<dt>%&gt;
+<dd>
+<p>　直前の文字の下端、あるいは直後の文字の上端の位置をタブ位置として取り込みます。
+このエスケープの意味があるのは
+<b class="ps">draw-retadr-opt</b>
+など、
+<b class="ps">drawline</b>
+のオプション指定辞書を直接指定できるプロシージャのみです。
+</dl>
+
+<p>　
+<code class="ps">drawline-substtable</code>
+による置換では、算用数字が漢数字に変換され、半角のアルファベットは横倒しで描画され、ハイフンは
+<code class="ps">/drawline-hyphen-font</code>
+で指定したフォントで横倒し（つまり縦ハイフンとして）かつ行の中央に来るように描画されます。
+
+</dl>
+
+<h3>address book</h3>
+
+<p>　アドレス帳はPostScriptの辞書に似た形式で定義します。
+PostScriptでは
+<code class="ps">&lt;&lt; &gt;&gt;</code>
+で囲って辞書を定義しますが、アドレス帳では各項目の最後に
+<code>-----</code>
+（ハイフン5つ）を記述します。
+それ以外はPostScriptの辞書定義と同じです。
+以下に例を示します。
+
+<pre class="quote">
+    /ID /default
+    /zip-fontname /OpticalBNormal
+-----
+    /ID /TEST0  
+    /C (寿限無寿限無) /D (五劫乃擦切) /title-aft (先生)
+    /FL [ /TEST0 /TEST1 (水行末雲来末風来末) /TEST2 ]
+    /ZIP (123-4567) /ADRS [
+        (神奈川県神奈川市神奈川区)
+        (東神奈川9丁目99-99)
+        (スタジオAkamoz%(VIII%)123号室)
+    ]
+    /adr-fontsize 6 mm  /name-fontsize 8 mm
+-----
+</pre>
+
+<p>　
+<code>print-address.ps</code>
+は
+<code>-----</code>
+をプロシージャとして定義して、アドレス帳のファイルを
+<b class="ps">run</b>
+するだけですので、任意のPostScriptオペレーターやプロシージャを使用できます。
+上の例で
+<b class="ps">mm</b>
+は
+<code>print-address.ps</code>
+が定義しているプロシージャです（mm単位の数値をPostScriptポイントに変換します）。
+
+<p>　住所録に必要な要素は以下のとおりです。
+これ以外の要素があっても特にエラーにはなりません。
+
+<code>print-address.ps</code>
+本体では使用されませんが、差出人描画用PostScriptファイルから参照することができます。
+また、各種設定を宛名ごとにオーバーライドすることもできます。
+<code class="ps">/ID</code>
+が
+<code class="ps">/default</code>
+の項目で全体の設定を変更することができます。
+
+<dl>
+<dt>/ID
+<dd>　IDです。
+PostScriptの名前（以下、タグと呼びます）で指定します。
+印刷する人の一覧（印刷リストファイル）や連名指定で使用します。
+
+<dt>/C
+<dd>　姓です。
+文字列で指定します。
+<b class="ps">drawline</b>
+のエスケープが使用できます。
+
+<dt>/D
+<dd>　名です。
+文字列で指定します。
+<b class="ps">drawline</b>
+のエスケープが使用できます。
+1文字の場合、そのままだと上揃えになります。
+下揃えにしたい場合は前にスペースを、中央揃えにしたい場合は前と後ろにスペースを入れてください。
+いずれの場合も敬称の直前に入る空白部分がなくなるわけではないので、位置は若干上気味になります。
+スペースの量を増やすと改善しますが、増やしすぎると描画結果が上下に縮みます。
+
+<dt>/title-aft
+<dd>　敬称です。
+文字列で指定します。
+通常の設定では省略すると<code class="ps">(様)</code>になります。
+<b class="ps">drawline</b>
+のエスケープが使用できます。
+aftがあるからpre（つまり肩書き）もあるのか？ というと、残念ながらありません。
+
+<dt>/ZIP
+<dd>　郵便番号です。
+文字列で指定します。
+ハイフンはあってもなくても構いません。
+7文字だとハイフンなし、8文字だとハイフンありだと思って、前から3文字と後ろから4文字を描画します。
+それ以外の文字数の場合には
+<b class="ps">trap</b>
+が発生します。
+
+<dt>/ADRS
+<dd>　住所です。
+文字列か、文字列の配列で指定します。
+文字列で指定した場合は1行で描画されます。
+配列で指定した場合は、1行につきひとつの文字列を指定します。
+いずれも
+<b class="ps">drawline</b>
+のエスケープが使用できます。
+なお、
+<b class="ps">drawline</b>
+のデフォルトの設定では算用数字をすべて漢数字に置換します。
+半角アルファベットは横倒しになります。
+ハイフン（半角マイナス、0x2D）は少し特殊な処理が行われます。
+
+<dt>/FL
+<dd>　連名リスト（family list）です。
+配列で指定します。
+配列の中にはタグか文字列を書けます。
+タグの場合には住所録から
+<code class="ps">/ID</code>
+が一致するものを探して、その
+<code class="ps">/D</code>
+（名前）のデータが描画されます。
+敬称は指定したIDの
+<code class="ps">/title-aft</code>
+が使用されます。
+文字列の場合にはそのまま描画されます。
+<b class="ps">drawline</b>
+のエスケープが使用できます。
+文字列を指定した場合、敬称はデフォルトのものになります。
+この項目で指定している
+<code class="ps">/title-aft</code>
+は使用されません。
+<code class="ps">/title-aft-default</code>
+が使用されます。
+描画の順序は配列の要素順になります。
+
+<p>　
+<code class="ps">/FL</code>
+がない場合は
+<code class="ps">/D</code>
+がそのまま描画されます。
+<code class="ps">/FL</code>
+がある場合はその項目の
+<code class="ps">/D</code>
+はそのままでは描画されませんので、自分自身を
+<code class="ps">/FL</code>
+に含める必要があります。
+例では
+<code class="ps">/TEST0</code>
+が
+<code class="ps">/FL</code>
+の先頭に入っていますが、これがないと「五劫乃擦切」さんが描画されません。
+逆に、印刷リスト上でIDを指定している人が亡くなって、この人だけ連名対象から外したいような場合、存命している人に
+<code class="ps">/FL</code>
+を移す必要はなくて、
+<code class="ps">/FL</code>
+からその人自身を取り除くだけでOKです。
+
+<p>　また、奥さんの方がお友達で住所録は奥さんで登録してるけど、宛名を夫婦連名にしたいような場合、
+<code class="ps">/FL</code>
+で描画順をひっくり返すだけでOKです。
+ご主人の方に住所録を移す必要はありません。
+
+</dl>
+
+<h3>Address List for Printing</h3>
+
+<p>　印刷リストファイルは行の先頭から、印刷したい人のIDを
+<code>/</code>
+付きで記述します。
+先頭が
+<code>/</code>
+ではない行、IDより後ろの部分はすべて無視されます。
+メモに使うことができます。
+1行は256文字以内である必要があります。
+
+<pre class="quote">
+            送り    受け
+----- 仕事関係 -----
+/TEST0      O       O      寿限無寿限無さん
+% /TEST1    -       喪中   長久命さん
+----- 同級生 -----
+/HS0        O       X      ほげのふがべえ
+/HS1        O       O      ・・・
+</pre>
+
+<p>　この例では/TEST0・/HS0・/HS1の3人が印刷されます。
+
+<h3>Return Address Drawing Script</h3>
+
+<p>　差出人描画用PostScriptファイルは通常のPostScriptファイルです。
+デフォルトユーザー空間（用紙左下原点）で呼び出されます。
+先に述べたように、IDが
+<code class="ps">/default</code>
+の項目で
+<b class="ps">begin</b>
+、さらに現在描画対象になっている項目で
+<b class="ps">begin</b>
+された状態で呼び出されます。
+描画環境と辞書環境は外側で保護された状態で呼び出されます。
+オペランドスタック・辞書スタックは深さのみ検査されます。
+
+<p>　PostScriptの全オペレーターが利用可能なほか、
+<b class="ps">drawline</b>
+や便利なオペレーターがいくつか利用可能です。
+下記プロシージャの項目をご覧ください。
+以下に簡単な例を挙げます。
+
+<pre class="quote">
+(9876543) draw-retzip
+margin-left 0 moveto
+retname-setfont
+(赤百舌 太郎) draw-retname
+retadr-linegap 0 rmoveto
+retadr-setfont
+(スタジオHiyodori) draw-retadr-last
+(西神奈川9丁目99-99) draw-retadr-next
+(神奈川県神奈川市神奈川区) draw-retadr-first
+</pre>
+
+<h2>SETTINGS</h2>
+
+<p>　設定はコマンドライン、他のPostScriptプログラムから呼び出す場合は呼び出し元のPostScriptプログラム、アドレス帳でIDが
+<code class="ps">/default</code>
+の項目、アドレス帳の各項目でオーバーライドが可能です。
+後者の方が優先順位が高くなります。
+例えば、差出人描画用PostScriptファイルのファイル名は
+<code>retadr.ps</code>
+ですが、コマンドラインで
+
+<pre class="quote">
+$ gs -sreturn-address-filename=retadr-new.ps print-address.ps
+</pre>
+とすれば
+<code>retadr-new.ps</code>
+が使用されます。
+もし、アドレス帳の
+<code class="ps">/default</code>
+項目で要素
+<code class="ps">return-address-filename</code>
+が
+<code class="ps">(retadr-latest.ps)</code>
+と指定されていれば、こちらのファイルが使用されます。
+さらに、項目ID
+<code class="ps">/MYDEAR</code>
+で要素
+<code class="ps">return-address-filename</code>
+が
+<code class="ps">(retadr-secret.ps)</code>
+となっていれば、この人だけ差出人描画用PostScriptファイルとして
+<code>retadr-secret.ps</code>
+が使用されます。
+
+<p>　
+<span class="def">override</span>
+欄の意味は以下のとおりです。
+
+<table class="">
+<tr><td class="def">all<td>すべての状況でオーバーライドできます。
+<tr><td class="def">/default<td>gsのコマンドライン、PostScriptプログラムから呼び出す場合はそのファイル、アドレス帳の
+<code class="ps">/default</code>
+項目でオーバーライドできます。
+アドレス帳の各項目ではオーバーライドできません。
+<tr><td class="def nowrap">outer scope<td>gsのコマンドライン、PostScriptプログラムから呼び出す場合はそのファイルでオーバーライドできます。
+アドレス帳ではオーバーライドできません。
+</table>
+
+<h3>初期化スクリプト</h3>
+
+<p>　実行開始時、
+<a href="ttfproc.htm">ttfproc.ps</a>
+と
+<a href="drawline.htm">drawline.ps</a>
+を読み込み、
+<b class="ps">setdef</b>
+プロシージャを定義した直後に、Ghostscriptのパスを参照して
+<code>print-address-init.ps</code>
+があれば実行します。
+続いて、
+<code>$HOME/.ghostscript/print-address-default.ps</code>
+があれば実行します。
+<code>$HOME</code>
+は環境変数HOMEの内容です。
+通常はユーザーのホームディレクトリになっているはずです。
+
+<p>　GhostscriptがSAFERモードで実行されている場合、前者はGS_LIB環境変数でパスが通っていなければ見つからない（ので実行されない）だけですが、後者はパスに依存せずに検索しているため、ファイルが存在し、パスが通っていないと
+<code class="ps">/invalidfileaccess</code>
+のエラーが発生します（存在しなければエラーにはなりません）。
+<p>　
+<code>print-address-init.ps</code>
+は
+<code>/usr/share/ghostscript/<em>ver</em>/lib</code>
+などに置いてシステム全体の設定に使うとよいでしょう。
+<code>print-address-init.ps</code>
+は
+<code class="ps">NoInitScript</code>
+を、
+<code>$HOME/.ghostscript/print-address-default.ps</code>
+は
+<code class="ps">NoDefaultScript</code>
+を
+<code class="ps">true</code>
+にすることで実行を抑制できます。
+
+<h3>全般的な設定</h3>
+
+<dl>
+<dt>/NoInitScript
+<dd>
+<p class="def">default:
+<code class="ps">false</code>
+<p class="def">override: outer scope
+<p>　
+<code class="ps">true</code>
+にすると
+<code>print-address-init.ps</code>
+を実行しません。
+
+<dt>/NoDefaultScript
+<dd>
+<p class="def">default:
+<code class="ps">false</code>
+<p class="def">override: outer scope
+<p>　
+<code class="ps">true</code>
+にすると
+<code>$HOME/.ghostscript/print-address-default.ps</code>
+を実行しません。
+
+<dt>/encoding
+<dd>
+<p class="def">default:
+<code class="ps">/EUC</code>
+<p class="def">override: /default
+<p>　アドレス帳・印刷リストファイルの文字コードを指定します。
+他に
+<code class="ps">/UTF8</code>
+が指定できます。
+アドレス帳の
+<code class="ps">/default</code>
+項目でオーバーライドすることができます。
+シフトJISは2バイト文字コード中に0x5C（PostScriptのエスケープ文字）が現れるのでおすすめできません（指定できません）。
+
+<dt>/CMapName
+<dd>
+<p class="def">default:
+<code class="ps">/EUC-V</code>
+<p class="def">override: (possible but not recommended)
+<p>　
+<b class="ps">drawline-setfont</b>
+に渡すCMap名です。
+縦書きのものを指定します。
+<code class="ps">/charbytesproc</code>
+と合わせる必要があるでしょう。
+通常は
+<code class="ps">/EUC-V</code>
+か
+<code class="ps">/UniJIS-UTF8-V</code>
+を指定することになるはずです。
+<code class="ps">/encoding</code>
+に
+<code class="ps">/UTF8</code>
+が設定されていると
+<code class="ps">/UniJIS-UTF8-V</code>
+が設定されます。
+
+<dt>/charbytesproc
+<dd>
+<p class="def">default:
+<code class="ps">{ charbytesEUC }</code>
+<p class="def">override: (possible but not recommended)
+<p>　バイト列から次の文字で使用するバイト数を得るためのプロシージャです。
+住所録ファイルの文字コードに応じて設定します。
+<code class="ps">/encoding</code>
+に
+<code class="ps">/UTF8</code>
+が設定されていると
+<code class="ps">{ charbytesUTF8 }</code>
+が設定されます。
+
+<p>　
+<code class="ps">charbytesEUC</code>
+は
+<a href="drawline.htm">drawline.ps</a>
+で、
+<code class="ps">charbytesUTF8</code>
+は
+<a href="ttfproc.htm">ttfproc.ps</a>
+で定義されています。
+プロシージャの仕様は、文字列を受け取り、その先頭にある文字のバイト数を整数で返すだけです。
+
+<dt>/address-book-filename
+<dd>
+<p class="def">default:
+<code class="ps">(address.ps)</code>
+<p class="def">override: outer scope
+<p>　アドレス帳のファイル名です。
+文字列で指定します。
+カレントディレクトリからの相対パスか絶対パスで指定します。
+この項目はアドレス帳それ自身からオーバーライドすることはできません。
+
+<dt>/address-list-filename
+<dd>
+<p class="def">default:
+<code class="ps">(address.lst)</code>
+<p class="def">override: /default
+<p>　印刷リストファイルのファイル名です。
+文字列で指定します。
+カレントディレクトリからの相対パスか絶対パスで指定します。
+アドレス帳の
+<code class="ps">/default</code>
+項目でオーバーライドすることができます。
+
+<dt>/return-address-filename
+<dd>
+<p class="def">default:
+<code class="ps">(retadr.ps)</code>
+<p class="def">override: all
+<p>　差出人描画用PostScriptファイルのファイル名です。
+文字列で指定します。
+カレントディレクトリからの相対パスか絶対パスで指定します。
+
+<dt>/paper-width
+<dd class="cont">
+<p class="def">default:
+<code class="ps">100 mm</code>
+<p class="def">override: /default
+
+<dt>/paper-height
+<dd>
+<p class="def">default:
+<code class="ps">148 mm</code>
+<p class="def">override: /default
+
+<p>　用紙サイズです。
+標準的なはがきの大きさです。
+アドレス帳の
+<code class="ps">/default</code>
+項目でオーバーライドすることができます。
+各項目でオーバーライドすると、寸法の計算は新しい用紙サイズで行われますが、用紙サイズそれ自体（
+<b class="ps">setpagedevice</b>
+で指定する値）は以前のままになります。
+
+<dt>/new-year-card
+<dd>
+<p class="def">default:
+<code class="ps">true</code>
+<p class="def">override: all
+<p>　年賀はがきかどうかを指定します。
+下マージンに影響があります。
+
+<dt>/draw-zip-frame
+<dd>
+<p class="def">default:
+<code class="ps">false</code>
+<p class="def">override: all
+<p>　郵便番号枠・描画禁止枠を描画するかどうかを指定します。
+
+</dl>
+
+<h3>フォントに関する設定</h3>
+
+<dl>
+<dt>/zip-fontname
+<dd>
+<p class="def">default:
+<code class="ps">/MS-Gothic-EUC-H</code>
+<p class="def">override: all
+<p>　郵便番号のフォントです。
+<code class="ps">/encoding</code>
+に
+<code class="ps">/UTF8</code>
+が設定されていると
+<code class="ps">/MS-Gothic-UniJIS-UTF8-H</code>
+になりますが、数字しか使われないので普通は差は出ません。
+
+<dt>/hyphen-fontname
+<dd>
+<p class="def">default:
+<code class="ps">/Courier</code>
+<p class="def">override: all
+<p>　ハイフン（半角マイナス、文字コード0x2D）に使用するフォントを指定します。
+
+<dt>/adr-fontname
+<dd class="cont">
+<p class="def">default:
+<code class="ps">/MS-Mincho</code>
+<p class="def">override: all
+<dt>/name-fontname
+<dd class="cont">
+<p class="def">default:
+<code class="ps">/MS-Gothic</code>
+<p class="def">override: all
+<dt>/retadr-fontname
+<dd class="cont">
+<p class="def">default:
+<code class="ps">/MS-Mincho</code>
+<p class="def">override: all
+<dt>/retname-fontname
+<dd>
+<p class="def">default:
+<code class="ps">/MS-Gothic</code>
+<p class="def">override: all
+
+<p>　それぞれ、宛先住所・宛名・差出人住所・差出人名に使うCIDフォント名です。
+
+<dt>/adr-hfontname
+<dd class="cont">
+<p class="def">default:
+<code class="ps">/MS-PMincho-EUC-H</code>
+<p class="def">override: all
+<dt>/name-hfontname
+<dd class="cont">
+<p class="def">default:
+<code class="ps">/MS-PGothic-EUC-H</code>
+<p class="def">override: all
+<dt>/retadr-hfontname
+<dd class="cont">
+<p class="def">default:
+<code class="ps">/MS-PMincho-EUC-H</code>
+<p class="def">override: all
+<dt>/retname-hfontname
+<dd>
+<p class="def">default:
+<code class="ps">/MS-PGothic-EUC-H</code>
+<p class="def">override: all
+<p>　それぞれ、宛先住所・宛名・差出人住所・差出人名で横書きに使うフォント名です。
+CIDフォントの場合はCMap名まで指定する必要があります。
+<code class="ps">/encoding</code>
+に
+<code class="ps">/UTF8</code>
+が設定されていると
+<code class="ps">-EUC-H</code>
+を
+<code class="ps">-UniJIS-UTF8-H</code>
+にしたものがデフォルトになります。
+
+<dt>/adr-fontsize
+<dd class="cont">
+<p class="def">default:
+<code class="ps">7 mm</code>
+<p class="def">override: all
+
+<dt>/name-fontsize
+<dd class="cont">
+<p class="def">default:
+<code class="ps">10 mm</code>
+<p class="def">override: all
+
+<dt>/retadr-fontsize
+<dd class="cont">
+<p class="def">default:
+<code class="ps">4 mm</code>
+<p class="def">override: all
+
+<dt>/retname-fontsize
+<dd>
+<p class="def">default:
+<code class="ps">4.5 mm</code>
+<p class="def">override: 
+
+<p>　それぞれ、宛先住所・宛名・差出人住所・差出人名のフォントサイズです。
+
+<dt>/adr-linepitch
+<dd class="cont">
+<p class="def">default:
+<code class="ps">1.5</code>
+<p class="def">override: all
+
+<dt>/name-linepitch
+<dd class="cont">
+<p class="def">default:
+<code class="ps">1.2</code>
+<p class="def">override: all
+
+<dt>/retadr-linepitch
+<dd class="cont">
+<p class="def">default:
+<code class="ps">1.3</code>
+<p class="def">override: all
+
+<dt>/retname-linepitch
+<dd>
+<p class="def">default:
+<code class="ps">1.3</code>
+<p class="def">override: all
+
+<p>　それぞれ、宛先住所・宛名・差出人住所・差出人名の行間隔です。
+それぞれのフォントサイズにここで指定した値を乗じたものが、実際の行間隔（行中央から行中央までの距離）になります。
+
+</dl>
+
+<h3>配置に関する設定</h3>
+
+<dl>
+<dt>/margin-top
+<dd class="cont">
+<p class="def">default:
+<code class="ps">25 mm</code>
+<p class="def">override: all
+
+<dt>/margin-left
+<dd class="cont">
+<p class="def">default:
+<code class="ps">5 mm</code>
+<p class="def">override: all
+
+<dt>/retadr-margin-top
+<dd>
+<p class="def">default:
+<code class="ps">65 mm</code>
+<p class="def">override: all
+
+<p>　それぞれ宛先住所と宛名の上マージン・差出人名の左マージン・差出人住所氏名の上マージンです。
+上マージンは用紙上端からの距離で指定します。
+左マージンは用紙左端から差出人名左端までの距離です。
+
+<dt>/margin-bottom
+<dd>
+<p class="def">default:
+<code class="ps">{ 18 mm nyc-offset add }</code>
+<p class="def">override: all
+
+<p>　下マージンです。
+用紙下端からの距離で指定しますが、年賀はがきかどうかで長さが変わるのでプロシージャになっています。
+宛先住所・宛名・差出人住所・差出人名すべての下端の基準になります。
+オーバーライドする際には
+<code class="ps">new-year-card</code>
+に気をつける必要があります。
+<code class="ps">nyc-offset</code>
+は
+<code class="ps">new-year-card</code>
+が
+<code class="ps">true</code>
+の場合は10mm、
+<code class="ps">false</code>
+の場合は0mmです。
+
+<dt>/margin-right
+<dd>
+<p class="def">default:
+<code class="ps">[ 15 mm 10 mm 5 mm 3 mm ]</code>
+<p class="def">override: all
+
+<p>　右マージンです。
+用紙右端からの距離で指定します。
+配列になっている場合、先頭の要素から、宛先住所が1行、2行・・・のマージンを指定します。
+配列要素が足りなくなった場合は最後の要素が使用されます。
+配列ではない場合は宛先住所の行数によらず、指定された値が使用されます。
+
+<dt>/adr-top
+<dd class="def">
+<p class="def">default:
+<code class="ps">0 mm</code>
+<p class="def">override: all
+
+<dt>/name-top
+<dd>
+<p class="def">default:
+<code class="ps">25 mm</code>
+<p class="def">override: all
+
+<p>　それぞれ、宛先住所・宛名の上端の位置です。
+上マージン
+<code class="ps">/margin-top</code>
+からの距離で指定します。
+
+<dt>/retadr-top
+<dd class="def">
+<p class="def">default:
+<code class="ps">0 mm</code>
+<p class="def">override: all
+
+<dt>/retname-top
+<dd>
+<p class="def">default:
+<code class="ps">15 mm</code>
+<p class="def">override: 
+
+<p>　それぞれ、差出人住所、差出人名の上端の位置です。
+差出人上マージン
+<code class="ps">/retadr-margin-top</code>
+からの距離で指定します。
+
+<dt>/adr-bottom
+<dd class="cont">
+<p class="def">default:
+<code class="ps">7 mm</code>
+<p class="def">override: all
+
+<dt>/name-bottom
+<dd class="cont">
+<p class="def">default:
+<code class="ps">2 mm</code>
+<p class="def">override: all
+
+<dt>/retadr-bottom
+<dd class="cont">
+<p class="def">default:
+<code class="ps">3 mm</code>
+<p class="def">override: all
+
+<dt>/retname-bottom
+<dd>
+<p class="def">default:
+<code class="ps">0 mm</code>
+<p class="def">override: all
+
+<p>　それぞれ、宛先住所・宛名・差出人住所・差出人名の下端の位置です。
+下マージン
+<code class="ps">/margin-bottom</code>
+からの距離で指定します。
+
+<dt>/adr-indent
+<dd class="cont">
+<p class="def">default:
+<code class="ps">10 mm</code>
+<p class="def">override: all
+
+<dt>/retadr-indent
+<dd>
+<p class="def">default:
+<code class="ps">6 mm</code>
+<p class="def">override: all
+
+<p>　それぞれ、宛先住所・差出人住所の2行目以降のインデント量を指定します。
+上端位置
+<code class="ps">/adr-top</code>
+あるいは
+<code class="ps">/retadr-top</code>
+からの距離で指定します。
+
+<dt>/name-hoffset
+<dd>
+<p class="def">default:
+<code class="ps">0 mm</code>
+<p class="def">override: all
+
+<p>　宛名を横方向に移動させる距離を指定します。
+指定しない場合、宛名の横方向中央が、用紙の中央に来るように描画します。
+正の値を指定すると宛名が左に移動します。
+負の値を指定すると右に移動します。
+
+<dt>/name-spacing
+<dd class="cont">
+<p class="def">default:
+<code class="ps">0.5</code>
+<p class="def">override: all
+<dt>/retname-spacing
+<dd>
+<p class="def">default: refer to
+<code class="ps">name-spacing</code>
+<p class="def">override: all
+
+<p>　宛名・差出人名の姓と名の間に入れる、追加のスペース量を指定します。
+それぞれのフォントサイズにここで指定した値を乗じたものが実際のスペースの長さになります。
+宛名が長すぎて縦方向に縮小された場合、同じ比率でスペースも縮小されます。
+
+<p>　
+<code class="ps" class="ps">/retname-spacing</code>
+はデフォルトではプロシージャになっています。
+<code class="ps" class="ps">/name-spacing</code>
+を変更するとそれに追随して
+<code class="ps" class="ps">/retname-spacing</code>
+も変わるようになっています。
+追随させたくない場合は固定の値を指定してください。
+
+<dt>/retadr-linegap
+<dd>
+<p class="def">default:
+<code class="ps">2 mm</code>
+<p class="def">override: all
+
+<p>　差出人住所と差出人名の間の追加の行間（距離）を指定します。
+
+</dl>
+
+<h3>描画文字列に関する設定</h3>
+
+<p>　EUCでもUTF-8でも内容は同じですが、文字コードが異なる点に注意してください。
+
+<dl>
+<dt>/title-aft-default
+<dd>
+<p class="def">default:
+<code class="ps">(様)</code>
+<p class="def">override: all
+
+<p>　デフォルトの敬称です。
+文字列で指定します。
+特に、
+<code class="ps">/FL</code>
+で文字列を指定した場合、この敬称が使用されます。
+
+<dt>/drawline-substtable
+<dd>
+<p class="def">default: see below
+<p class="def">override: all
+<p>　
+<b class="ps">drawline</b>
+プロシージャの
+<code class="ps">substtable</code>
+として設定する辞書です。
+詳しくは
+<a href="drawline.htm">drawline.ps</a>
+のマニュアルをご覧ください。
+デフォルトは以下のようになっています。
+<table>
+<tr><th>元の文字<th>処理
+<tr><td class="param c">0<td>「〇」に置換
+<tr><td class="param c">1<td>「一」に置換
+<tr><td class="param c">2<td>「二」に置換
+<tr><td class="param c">3<td>「三」に置換
+<tr><td class="param c">4<td>「四」に置換
+<tr><td class="param c">5<td>「五」に置換
+<tr><td class="param c">6<td>「六」に置換
+<tr><td class="param c">7<td>「七」に置換
+<tr><td class="param c">8<td>「八」に置換
+<tr><td class="param c">9<td>「九」に置換
+<tr><td class="nowrap">半角アルファベット<td>横倒しで描画
+<tr><td class="param c">-<td>（半角ハイフン、文字コード0x2D）フォント
+<code class="ps">/drawline-hyphen-font</code>
+を使用し、横倒し（縦ハイフンとして）かつ行中央に描画。
+</table>
+
+</dl>
+
+<h2>VALUES</h2>
+
+<p>　差出人描画時には以下のような値が使用可能です。
+
+<dl>
+<dt>current-fontsize
+<dt>current-linepitch
+<dd>
+<p>　
+<b class="ps">drawline-setfont</b>
+プロシージャが設定します。
+引数に指定したフォントサイズと行ピッチがそのまま設定されます。
+
+<dt>drawline-hfont
+<dt>drawline-hyphen-font
+<dd>
+<p>　
+<b class="ps">drawline-setfont</b>
+プロシージャが設定します。
+横書き・横倒し描画時に使用するフォントと、ハイフン描画時に使用するフォントを保持しています。
+</dl>
+
+<h2>PROCEDURES</h2>
+
+<p>　原則として、アドレス帳や差出人描画用PostScriptファイルでプロシージャをオーバーライドすることはできますが、
+<code>print-address.ps</code>
+の外側（コマンドラインなど）ではオーバーライドできません。
+
+<p>　長さや位置を扱うプロシージャは、特に明記していなければPostScriptのデフォルトユーザー空間（1/72インチ単位、つまりPostScriptポイント単位）の値を使用します。
+原点は用紙左下、X軸の正方向は右、Y軸の正方向は上になります。
+
+<p>　たとえば、
+<b class="ps">nyc-offset</b>
+は
+<code class="ps">new-year-card</code>
+が
+<code class="ps">true</code>
+のときに10mmを返しますが、実際には「28.346」といった値を返します。
+ここではこれを単に「10mm」と記述します。
+
+<p>　以下のようなプロシージャが用意されています。
+
+
+<h3>全体で使用できるプロシージャ</h3>
+
+<p>　ここで挙げたプロシージャの他に、
+<a href="drawline.htm">drawline.ps</a>
+と
+<a href="ttfproc.htm">ttfproc.ps</a>
+が定義しているプロシージャも利用可能です。
+
+<dl>
+<dt>mm
+<dd>
+<p class="def ps"><em>num</em> <b>mm</b> <em>num'</em>
+<p>　
+<em>num</em>
+をmm単位の数値とみなしてPostScriptポイントに変換します。
+
+<dt>setdef
+<dd>
+<p class="def ps"><em>key</em> <em>value</em> <b>setdef</b> <code>-</code>
+<p>　
+<em>key</em>
+が定義されていなければ
+<em>value
+</em>を
+<b class="ps">def</b>
+します。
+そうでなければ何もしません。
+
+</dl>
+
+<h3>差出人描画時に使用できるプロシージャ</h3>
+
+<h4>位置・描画領域に関するプロシージャ</h4>
+
+<dl>
+
+<dt>nyc-offset
+<dd>
+<p class="def ps"><code>-</code> <b>nyc-offset</b> <em>num</em>
+<p>　年賀はがきの場合に必要なオフセット量を返します。
+<code class="ps">new-year-card</code>
+が
+<code class="ps">true</code>
+の場合は10mm、
+<code class="ps">false</code>
+の場合は0を返します。
+
+<dt>adr-top-ypos
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>adr-top-ypos</b> <em>num</em>
+<dt>adr-indent-ypos
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>adr-indent-ypos</b> <em>num</em>
+<dt>adr-bottom-ypos
+<dd>
+<p class="def ps"><code>-</code> <b>adr-bottom-ypos</b> <em>num</em>
+<p>　それぞれ、宛先住所の上端、宛先住所のインデント位置、宛先住所の下端をデフォルトユーザー空間のY座標で返します。
+宛先住所上端Y座標は用紙サイズ(高さ）から上マージンと
+<code class="ps">adr-top</code>
+を引いた値になります。
+宛先住所のインデント位置は、宛先住所上端Y座標から
+<code class="ps">adr-indent</code>
+を引いた値になります。
+宛先住所下端Y座標は下マージンに
+<code class="ps">adr-bottom</code>
+を足した値になります。
+
+<dt>adr-height
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>adr-height</b> <em>num</em>
+<dt>adr-indent-height
+<dd>
+<p class="def ps"><code>-</code> <b>adr-indent-height</b> <em>num</em>
+<p>　それぞれ、宛先住所領域全体の高さ、インデントされた宛先住所領域の高さを、デフォルトユーザー空間で示します。
+それぞれ宛先住所の上端Y座標と下端Y座標の差、宛先住所のインデント位置Y座標と下端Y座標の差になります。
+
+<dt>name-top-ypos
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>name-top-ypos</b> <em>num</em>
+<dt>name-bottom-ypos
+<dd>
+<p class="def ps"><code>-</code> <b>name-bottom-ypos</b> <em>num</em>
+<p>　それぞれ、宛名の上端、宛名の下端をデフォルトユーザー空間のY座標で返します。
+宛名の上端Y座標は用紙サイズ（高さ）から上マージンと
+<code class="ps">name-top</code>
+を引いたもの、
+宛名の下端Y座標は下マージンに
+<code class="ps">name-bottom</code>
+を足したものになります。
+
+<dt>name-height
+<dd>
+<p class="def ps"><code>-</code> <b>name-height</b> <em>num</em>
+<p>　宛名の高さをデフォルトユーザー空間で示します。
+宛名の上端位置Y座標と下端位置Y座標の差になります。
+
+<dt>retadr-top-ypos
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>retadr-top-ypos</b> <em>num</em>
+<dt>retadr-indent-ypos
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>retadr-indent-ypos</b> <em>num</em>
+<dt>retadr-bottom-ypos
+<dd>
+<p class="def ps"><code>-</code> <b>retadr-bottom-ypos</b> <em>num</em>
+<p>　それぞれ、差出人住所の上端、差出人住所のインデント位置、差出人住所の下端をデフォルトユーザー空間のY座標で返します。
+差出人住所上端Y座標は用紙サイズ(高さ）から差出人上マージンと
+<code class="ps">retadr-top</code>
+を引いた値になります。
+差出人住所のインデント位置は、差出人住所上端Y座標から
+<code class="ps">retadr-indent</code>
+を引いた値になります。
+差出人住所下端Y座標は下マージンに
+<code class="ps">retadr-bottom</code>
+を足した値になります。
+
+<dt>retadr-height
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>retadr-height</b> <em>num</em>
+<dt>retadr-indent-height
+<dd>
+<p class="def ps"><code>-</code> <b>retadr-indent-height</b> <em>num</em>
+<p>　それぞれ、差出人住所領域全体の高さ、インデントされた差出人住所領域の高さを、デフォルトユーザー空間で示します。
+それぞれ差出人住所の上端Y座標と下端Y座標の差、差出人住所のインデント位置Y座標と下端Y座標の差になります。
+
+<dt>retname-top-ypos
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>retname-top-ypos</b> <em>num</em>
+<dt>retname-bottom-ypos
+<dd>
+<p class="def ps"><code>-</code> <b>retname-bottom-ypos</b> <em>num</em>
+<p>　それぞれ、差出人名の上端、差出人名の下端をデフォルトユーザー空間のY座標で返します。
+差出人名の上端Y座標は用紙サイズ（高さ）から差出人上マージンと
+<code class="ps">retname-top</code>
+を引いたもの、
+差出人名の下端Y座標は下マージンに
+<code class="ps">retname-bottom</code>
+を足したものになります。
+
+<dt>retname-height
+<dd>
+<p class="def ps"><code>-</code> <b>retname-height</b> <em>num</em>
+<p>　差出人名の高さをデフォルトユーザー空間で示します。
+差出人名の上端位置Y座標と下端位置Y座標の差になります。
+
+</dl>
+
+<h4>フォント設定に関するプロシージャ</h4>
+
+<dl>
+<dt>drawline-setfont
+<dd>
+<p class="def ps"><em>cidfontname</em> <em>fontname</em> <em>size</em> <em>pitch</em> <b>drawline-setfont</b> <code>-</code>
+<p>　
+<b class="ps">draw-address</b>
+と
+<b class="ps">draw-address</b>
+を呼び出すプロシージャで使うフォントを設定します。
+<em>size</em>
+はフォントサイズです。
+<code class="ps">current-fontsize</code>
+で参照可能です。
+<em>cidfontname</em>
+は縦書きに使用するCIDフォントの名前を指定します。
+このフォントは
+<code class="ps">CMapName</code>
+とともに
+<b class="ps">ttfComposeVerticalFont </b>
+に渡され、
+<em>size</em>
+で
+<b class="ps">scalefont</b>
+されて
+<b class="ps">setfont</b>
+されます。
+
+<p>　<em>fontname</em>
+は横書き・横倒し（
+<b class="ps">ttfGenericAlignShow</b>
+）で描画するときに使用するフォントの名前です。
+
+<p>　<em>pitch</em>
+はラインピッチ（行間）を指定します。
+この値に
+<em>size</em>
+を乗じたものが、実際の行間隔（行中央から行中央までの距離）になります。
+<code class="ps">current-linepitch</code>
+で参照できます。
+
+<dt>current-linewidth
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>current-linewidth</b> <em>num</em>
+<dt>current-lineoff
+<dd>
+<p class="def ps"><code>-</code> <b>current-lineoff</b> <em>num</em>
+<p>　それぞれ、現在の行間隔と、行と行の境目から行中央までの距離を示します。
+<b class="ps">current-linewidth</b>
+はPostScriptのオペレーター
+<b class="ps">currentlinewidth</b>
+と混乱しないように注意してください。
+
+<p>
+　<b class="ps">current-linewidth</b>
+は
+<code class="ps">current-fontsize</code>
+に
+<code class="ps">current-linepitch</code>
+を乗じた値を返します。
+<b class="ps">current-lineoff</b>
+は
+<b class="ps">current-linewidth</b>
+が返す値の半分を返します。
+通常、
+<b class="ps">moveto</b>
+するときはX座標を行の中央ではなく行と行の境目に、Y座標を0にしておき、
+
+<pre class="quote">
+gsave
+current-lineoff <em>ypos</em> rmoveto
+(<em>string to write</em>) show
+grestore
+current-linewidth 0 rmoveto
+</pre>
+
+<p>のように描画します。
+描画開始位置は行中央になり、描画が終わったところで現在位置を次の行との境目に移動します。
+このようにしておくと途中でフォントサイズが変わった場合でも問題なく描画できます。
+
+<dt>retadr-setfont
+<dd class="cont">
+<p class="def ps"><code>-</code> <b>retadr-setfont</b> <code>-</code>
+<dt>retname-setfont
+<dd>
+<p class="def ps"><code>-</code> <b>retname-setfont</b> <code>-</code>
+<p>　それぞれ、差出人住所、差出人名を描画するためのフォントの設定を行います。
+ぞれぞれ、
+<code class="ps">retadr-fontname</code>
+・
+<code class="ps">retadr-hfontname</code>
+・
+<code class="ps">retadr-fontsize</code>
+・
+<code class="ps">retadr-linepitch</code>
+あるいは
+<code class="ps">retname-fontname</code>
+・
+<code class="ps">retname-hfontname</code>
+・
+<code class="ps">retname-fontsize</code>
+・
+<code class="ps">retname-linepitch</code>
+を指定して
+<b class="ps">drawline-setfont</b>
+を呼び出します。
+</dl>
+
+<h4>差出人描画に関するプロシージャ</h4>
+
+<p>　
+<b class="ps">draw-retzip</b>
+以外のプロシージャは現在位置を事前に設定しておく必要があります。
+通常、X座標は描画する行の左端、Y座標は0に設定します。
+各描画プロシージャはまずX座標を
+<code class="ps">current-lineoff</code>
+だけ右に、Y座標を描画範囲上端として指定された距離だけ上に移動し、それから文字列を描画します。
+描画後、X座標は描画前の座標から
+<code class="ps">current-linewidth</code>
+だけ右に移動した位置に、Y座標は0になります。
+
+<p>　したがって、描画プロシージャを続けて呼び出すと、描画位置はフォントサイズに応じて<b>右へ</b>動いていきます。
+差出人住所・氏名は左端に書くものですから、最初にX座標を左マージンの位置に設定し、左側、つまり名前から書き始めれば、座標計算をせずに済みます。
+
+<dl>
+<dt>draw-retzip
+<dd>
+<p class="def ps"><em>str</em> <b>draw-retzip</b> <code>-</code>
+<p>　差出人郵便番号を描画します。
+<em>str</em>
+の扱いは住所録中の
+<code class="ps">/ZIP</code>
+と同じです。
+描画位置は
+<code class="ps">new-year-card</code>
+の影響を受けます。
+
+<dt>draw-address
+<dd>
+<p class="def ps"><em>str</em> <em>top</em> <em>bottom</em> <b>draw-address</b> <code>-</code>
+<p class="def ps"><em>str</em> <em>top</em> <em>bottom</em> <em>dict</em> <b>draw-address</b> <code>-</code>
+<p>　
+<b class="ps">drawline-setfont</b>
+で設定されたフォントを使用して文字列
+<em>str</em>
+を描画します。
+<b class="ps">drawline</b>
+のエスケープが使用できます。
+描画範囲は
+<em>top</em>
+から
+<em>bottom</em>
+までになります。
+いずれもデフォルトユーザー空間のY座標を指定します。
+通常、
+<code class="ps">retadr-top-ypos</code>
+や
+<code class="ps">retadr-bottom-ypos</code>
+を指定します。
+描画位置についてはこの節の冒頭を参照してください。
+
+<p>　
+<em>dict</em>
+には
+<b class="ps">drawline</b>
+のオプションを指定します。
+<em>dict</em>
+を指定しない形式ではオプションなしで
+<b class="ps">drawline</b>
+を呼び出します。
+
+<dt>draw-retadr-first
+<dd class="cont">
+<p class="def ps"><em>str</em> <b>draw-retadr-first</b> <code>-</code>
+<dt>draw-retadr-next
+<dd class="cont">
+<p class="def ps"><em>str</em> <b>draw-retadr-next</b> <code>-</code>
+<dt>draw-retadr-last
+<dd>
+<p class="def ps"><em>str</em> <b>draw-retadr-last</b> <code>-</code>
+
+<p>　それぞれ、差出人住所の最初の行、中間の行、最後の行を描画するときに使います。
+<b class="ps">drawline-setfont</b>
+で設定されたフォントを使用して
+<em>str</em>
+を描画しますが、
+<b class="ps">draw-retadr-first</b>
+と
+<b class="ps">draw-retadr-next</b>
+では上揃え、
+<b class="ps">draw-retadr-last</b>
+では下揃えで描画します。
+
+<p>　
+<b class="ps">draw-retadr-first</b>
+では
+描画範囲の上端が
+<code class="ps">retadr-top-ypos</code>
+に、
+<b class="ps">draw-retadr-next</b>
+と
+<b class="ps">draw-retadr-last</b>
+では
+<code class="ps">retadr-indent-ypos</code>
+になり、下端はいずれも
+<code class="ps">retadr-bottom-ypos</code>
+になります。
+描画位置についてはこの節の冒頭を参照してください。
+<b class="ps">drawline</b>
+のエスケープが使用できます。
+
+<dt>draw-retname
+<dd>
+<p class="def ps"><em>str</em> <b>draw-retname</b> <code>-</code>
+
+<p>　差出人名を描画します。
+<b class="ps">drawline-setfont</b>
+で設定されたフォントを使用して、
+<code class="ps">retname-top-ypos</code>
+から
+<code class="ps">retname-bottom-ypos</code>
+の範囲に
+<em>str</em>
+を描画します。
+<b class="ps">drawline</b>
+のエスケープが使用できます。
+描画位置についてはこの節の冒頭を参照してください。
+
+<dt>draw-retlist-setup
+<dd class="cont">
+<p class="def ps"><em>fstr</em> <em>gstr</em> <b>draw-retlist-setup</b> <code>-</code>
+<dt>draw-retlist
+<dd>
+<p class="def ps"><em>fstr</em> <em>gstr</em> <b>draw-retlist</b> <code>-</code>
+<p>　差出人名を連名で描画します。
+まず、差出人のうち一番長い姓を
+<em>fstr</em>
+に、一番長い名を
+<em>gstr</em>
+に指定して、
+<b class="ps">draw-retlist-setup</b>
+を呼び出します。
+以後の描画に必要な情報が現在の辞書に
+<code class="ps">draw-retlist-info</code>
+として設定されます。
+
+<p>　続いて
+<b class="ps">draw-retlist</b>
+を呼び出すと、姓
+<em>fstr</em>
+と名
+<em>gstr</em>
+がそれぞれ均等割りで描画されます。
+<em>fstr</em>
+を空文字列にすると名だけ描画されます。
+
+使用されるフォントは
+<b class="ps">drawline-setfont</b>
+で設定されたものになります。
+描画範囲は
+<code class="ps">retname-top-ypos</code>
+から
+<code class="ps">retname-bottom-ypos</code>
+までになります。
+描画位置についてはこの節の冒頭を参照してください。
+
+</dl>
+
+<h2>SECURITY</h2>
+
+<p>　アドレス帳と差出人描画用PostScriptファイルはそのままPostScriptの
+<b class="ps">run</b>
+オペレーターで実行されます。
+Ghostscriptの設定によっては、パーミッションが許す限り、任意のファイルの読み書きが可能ですので、信頼できるファイルのみを指定するように注意してください。
+出所不明のファイルを指定してはいけません。
+
+<p>　また、
+<code>print-address-init.ps</code>
+・
+<code>print-address-default.ps</code>
+も、ユーザーが自由に指定できる点に留意が必要です。
+必要に応じて
+<code class="ps">NoInitScript</code>
+・
+<code class="ps">NoDefaultScript</code>
+をtrueに定義したり、パスをハードコーディングするなどの対策が必要です。
+
+<h2>THE OTHER FILES</h2>
+
+<dl>
+<dt>euc-settings.ps
+<dt>utf8-settings.ps
+<dd>
+<p>　それぞれ、
+<code class="ps">/encoding</code>
+に
+<code class="ps">/EUC</code>
+・
+<code class="ps">/UTF8</code>
+を指定したときに読み込まれる設定ファイル。
+アドレス帳を読み込み、
+<code class="ps">/default</code>
+の項目で
+<b class="ps">begin</b>
+したあとに、
+<code class="ps">/encoding</code>
+の設定を見てどちらを読み込むか決定します。
+すべて
+<b class="ps">setdef</b>
+プロシージャで設定しているため、この時点で既に設定されていれば上書きはしません。
+
+<p>　文字コード設定に依存するフォント名や、文字列などの設定を含んでいます。
+文字列に関しては内容は同じですが、文字コードが異なるので実際のバイト列は異なることに注意してください。
+
+</dl>
+
+<H2>AUTHOR</h2>
+<p>　Written by akamoz.jp
+
+<H2>COPYRIGHT</h2>
+<p>Copyright (c) 2016 akamoz.jp
+<p>All rights reserved.
+
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+<p>1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+<p>2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+<h2>SEE ALSO</h2>
+
+<p>gs(1) drawline.ps ttfproc.ps
+
+<p class="revision">$Id: dump-yuv4mpeg2.htm,v 1.1 2015/09/27 15:56:07 you Exp $
+</body>
+</html>

@@ -1,0 +1,1551 @@
+<!doctype html>
+<!-- util-ps-akamoz.htm -->
+<html id="top">
+<head>
+	<meta name="viewport" content="initial-scale=1.0">
+	<meta charset="shift_jis">
+	<link rel="stylesheet" type="text/css" href="../manual.css">
+	<title>util.ps.akamoz.jp ProcSet resource</title>
+	<style type="text/css"><!--
+	--></style>
+</head>
+<body>
+<h1>util.ps.akamoz.jp ProcSet resource</h1>
+<p class="revision">Version 0.1.0.<small>0</small> (29 Feb 2016)
+<h2>NAME</h2>
+<p>
+<code>util.ps.akamoz.jp</code>
+(ProcSet) - 基本的なプロシージャを集めたProcSetリソース
+
+<h2>SYNOPSIS</h2>
+<pre class="quote">
+/util.ps.akamoz.jp /ProcSet findresource begin
+...
+end
+</pre>
+
+<h2>DESCRIPTION</h2>
+
+<p>　基本的なプロシージャを収めたProcSetリソースです。
+
+<h2>CONSTANTS</h2>
+
+<dl>
+<dt>ProcSetVersion
+<dd>
+<p class="def ps">type: string
+<p>　ProcSetのバージョン。
+現在は
+<code class="ps">(0.1)</code>
+。
+今後、
+<code class="ps">0.2</code>
+・・・
+<code class="ps">0.3</code>
+のように増えていく予定です。
+<code class="ps">0.8</code>
+のあとは
+<code class="ps">0.900</code>
+となり、
+<code class="ps">0.998</code>
+のあとは
+<code class="ps">0.99900</code>
+のようになる予定です。
+このとおりにはならないかもしれませんが、少なくとも文字列の大小比較でバージョンの新旧が判断できる（文字列として比較したときにバージョンが古い方が小さい）ように付与します。
+
+<dt>ProcSetName
+<dd>
+<p class="ps def">type: string
+<p>　ProcSet名。
+<code class="ps">(util.ps.akamoz.jp)</code>
+。
+</dl>
+
+<h2>SETTINGS</h2>
+
+<dl>
+<dt>DebugDump
+<dd>
+<p class="ps def">type: boolean
+<p class="ps def">default: undefined
+<p>　デバッグダンプを行うかどうかを指定します。
+<code class="ps">true</code>
+に設定すると
+<b class="ps">dump</b>
+・
+<b class="ps">dumpdict</b>
+がダンプを出力するようになります。
+未定義もしくは
+<code class="ps">false</code>
+に設定するとダンプを出力しなくなります。
+
+<dt>akamoz-boolean-encode
+<dd>
+<p class="ps def">type: dictionary
+<p class="ps def">default: see description
+<p>　
+<b class="ps">apring</b>
+が真偽値を表示するときに使用する辞書です。
+辞書スタックを用いてオーバーライドすることができます。
+キーには
+<code class="ps">true</code>
+か
+<code class="ps">false</code>
+を指定します。
+デフォルトではASCIIコードで
+<code>false</code>
+・
+<code>true</code>
+という文字列が設定されています。
+つまり、以下のように定義されています。
+<pre class="quote ps">
+/akamoz-boolean-encode &lt;&lt;
+    false   (false)
+    true    (true)
+&gt;&gt;
+</pre>
+
+<dt>akamoz-number-encode
+<dd>
+<p class="ps def">type: dictionary
+<p class="ps def">default: see description
+<p>　
+<b class="ps">apring</b>
+が数値を表示するときに使用する辞書です。
+辞書スタックを用いてオーバーライドすることができます。
+デフォルトではASCIIコードによる文字が設定されています。
+各キーに対して0から255の数値を指定します。
+キー0から9は名前ではなく整数です。
+<table class="c">
+<tr><th>キー<th>意味<th>デフォルト値
+<tr><td class="param-ps">0<td>数字の0<td class="param-ps">16#30
+<tr><td class="param-ps">1<td>数字の1<td class="param-ps">16#31
+<tr><td class="param-ps">2<td>数字の2<td class="param-ps">16#32
+<tr><td class="param-ps">3<td>数字の3<td class="param-ps">16#33
+<tr><td class="param-ps">4<td>数字の4<td class="param-ps">16#34
+<tr><td class="param-ps">5<td>数字の5<td class="param-ps">16#35
+<tr><td class="param-ps">6<td>数字の6<td class="param-ps">16#36
+<tr><td class="param-ps">7<td>数字の7<td class="param-ps">16#37
+<tr><td class="param-ps">8<td>数字の8<td class="param-ps">16#38
+<tr><td class="param-ps">9<td>数字の9<td class="param-ps">16#39
+<tr><td class="param-ps">/Space<td>空白<td class="param-ps">16#20
+<tr><td class="param-ps">/Plus<td>正符号<td class="param-ps">16#2B
+<tr><td class="param-ps">/Minus<td>負号<td class="param-ps">16#2D
+<tr><td class="param-ps">/Period<td>小数点<td class="param-ps">16#2E
+</table>
+
+</dl>
+
+<h2>PROCEDURES</h2>
+
+<dl>
+<dt>trap
+<dd>
+<p class="ps def"><em>name</em> <b class="ps">trap</b> <code>-</code>
+<p>　ProcSetリソース内の各プロシージャは、処理に問題が起きるとこのプロシージャを呼び出します。
+ProcSetリソースの中では定義されていません。
+ユーザーが定義しなければ
+<b class="ps">undefined</b>
+エラーが発生するでしょう。
+このマニュアルでは「
+<b class="ps">trap</b>
+が発生する」
+と記述しています。
+
+<dt>ckdef
+<dd>
+<p class="ps def"><em>key</em> <em>value</em> <b class="ps">ckdef</b> <code>-</code>
+<p>　
+<code class="ps">currentdict</code>
+に
+<em>key</em>
+で示されたキーがあるかどうかを調べ、なければ
+<em>key</em> <em>value</em> <b class="ps">def</b>
+を実行します。
+
+<dt>setdef
+<dd>
+<p class="ps def"><em>key</em> <em>value</em> <b class="ps">setdef</b> <code>-</code>
+<p>　辞書スタックの辞書全体から
+<em>key</em>
+で示されたキーがあるかどうかを調べ、なければ
+<em>key</em> <em>value</em> <b class="ps">def</b>
+を実行します。
+
+<dt>AND
+<dd>
+<p class="ps def"><em>bool</em> <em>proc</em> <b class="ps">AND</b> <em>bool</em>
+<p>　短絡評価をする論理積です。
+<em>bool</em>
+が
+<code class="ps">false</code>
+の場合は
+<em>proc</em>
+を評価せず、
+<code class="ps">false</code>
+を返します。
+<em>bool</em>
+が
+<code class="ps">true</code>
+の場合は
+<em>proc</em>
+を実行します。
+
+<dt>OR
+<dd>
+<p class="ps def"><em>bool</em> <em>proc</em> <b class="ps">OR</b> <em>bool</em>
+<p>　短絡評価をする論理和です。
+<em>bool</em>
+が
+<code class="ps">true</code>
+の場合は
+<em>proc</em>
+を評価せず
+<code class="ps">true</code>
+を返します。
+<em>bool</em>
+が
+<code class="ps">false</code>
+の場合は
+<em>proc</em>
+を実行します。
+
+<dt>print-namestr
+<dd>
+<p class="ps def"><em>name</em> <b class="ps">print-namestr</b> <code>-</code>
+<p>　
+<em>name</em>
+を文字列に変換して
+<b class="ps">print</b>
+を実行します。
+若干古いプロシージャです。
+現在は<b class="ps">aprint</b>を使ったほうが楽です。
+
+<dt>dump
+<dd><em>str</em> dump <code>-</code>
+<p>　<b class="ps">pstackで</b>スタックをダンプします。
+ダンプの前に
+<em>str</em>
+を
+<code>-----</code>
+で挟んで表示し、
+スタックダンプのあとにもハイフンによる区切りを表示します。
+<code class="ps">DebugDump</code>
+<code class="ps">false</code>
+の場合はダンプを行いません。
+現在は
+<b class="ps">aprint</b>
+でタグを表示する
+<b class="ps">dstack</b>
+があり、こちらの方が使いやすいでしょう。
+ただし、
+<b class="ps">dstack</b>
+は
+<code class="ps">DebugDump</code>
+を見ていません。
+
+<pre class="quote">
+----- pointA -----
+<em>dump by <b class="ps">pstack</b></em>
+--------------------
+</pre>
+
+<dt>dumpdict
+<dd>
+<p class="def ps"><em>dict</em> <b class="ps">dumpdict</b> <em>dict</em>
+<p>　辞書をダンプします。
+キーを
+<b class="ps">aprint</b>
+で表示し、値を
+<b class="ps">==</b>
+で表示します。
+ダンプした辞書をそのまま返します。
+<pre class="quote">
+----- dumpdict -----
+<em>key</em>: <em>value</em>
+...
+--------------------
+</pre>
+<p>　表示中の<code>dumpdict</code>の部分は変えられません。
+タグを指定できる
+<b class="ps">ddict</b>
+の方が使いやすいでしょう。
+ただし、
+<b class="ps">ddict</b>
+は
+<code class="ps">DebugDump</code>
+を見ていません。
+
+<dt>knownget
+<dd>
+<p class="ps def"><em>dict</em> <em>key</em> <b class="ps">knownget</b> <em>val</em> true
+<p class="ps def"><em>dict</em> <em>key</em> <b class="ps">knownget</b> false
+<p>　<em>dict</em>
+に
+<em>key</em>
+があればその値と
+<code class="ps">true</code>
+をスタックトップに置きます。
+なければ
+<code class="ps">false</code>
+を置きます。
+Ghostscriptの
+<b class="ps">.knownget</b>
+と同じです。
+
+<dt>defaultload
+<dd>
+<p class="def ps"><em>key</em> <em>any</em> <b class="ps">defaultload</b> <em>value</em>
+<p>　辞書スタック中の辞書から
+<em>key</em>
+を探し、あればその値を返します。
+なければ
+<em>any</em>
+を返します。
+
+<dt>err
+<dd>
+<p class="def ps"><em>errobj</em> <em>errname</em> <b class="ps">err</b> <code>-</code>
+<p>　標準的なPostScriptのエラー生成をエミュレートします。
+<code class="ps">errordict</code>
+から
+<em>errname</em>
+を探し、その値を実行します。
+
+<dt>vokput
+<dd>
+<p class="def ps"><em>any</em> <em>obj</em> <em>key</em> <b class="ps">vokput</b> <code>-</code>
+<p>　値（value）・オブジェクト（object）・キー（key）の順序で指定する
+<b class="ps">put</b>
+です。
+先に値を計算したあと、オブジェクトに
+<b class="ps">put</b>
+したいときに便利です。
+オペランドの順序を変えて
+<b class="ps">put</b>
+を実行しているだけなので、
+<em>obj</em>
+には配列・文字列・辞書などが指定できます。
+<em>obj</em>
+に指定したものによって
+<em>any</em>
+や
+<em>key</em>
+に指定できる値は変わります。
+
+<dt>inc
+<dd>
+<p class="ps def"><em>name</em> <b class="ps">inc</b> <code>-</code>
+<p>　インクリメント。
+<em>name</em>
+で指定されたオブジェクトに1を足し、
+<em>name</em>
+として
+<b class="ps">def</b>
+します。
+<b class="ps">def</b>
+しているので元のオブジェクトが
+<b class="ps">currentdict</b>
+にない場合は期待していない結果になることが多いでしょう。
+<b class="ps">store</b>
+で書いたほうがよかったなぁ。
+
+<dt>gettail
+<dd>
+<p class="ps def"><em>array</em> <em>num</em> <b class="ps">gettail</b> <em>subarray</em>
+<p class="ps def"><em>str</em> <em>num</em> <b class="ps">gettail</b> <em>substr</em>
+<p>　指定されたオブジェクトの、指定された位置より後ろの部分を
+<b class="ps">getinterval</b>
+で取り出します。
+<code class="ps">str 5 gettail</code>
+の場合、もし
+<code class="ps">str</code>
+が15バイトあれば、先頭5バイトを除く、後尾10バイトを示すサブ文字列が返ります。
+<b class="ps">getinterval</b>
+で取り出しているので、VM上のオブジェクトは元のオブジェクトと共有しています。
+
+<dt>fillvalue
+<dd>
+<p class="ps def"><em>obj</em> <em>any</em> <b class="ps">fillvalue</b> <code>-</code>
+<p>　
+<em>obj</em>
+を
+<em>any</em>
+で埋めます。
+<em>obj</em>
+はキーを整数値で指定できるオブジェクトでなければなりません。
+通常は配列か文字列ですが、辞書を指定しても一応動くでしょう。
+ただし、辞書の内容を列挙しているわけではないので、整数値をキーとした値が新たに辞書に付け加えられることになるでしょう。
+
+<dt>expand-composit
+<dd>
+<p class="ps def"><em>proc</em> <b class="ps">expand-composite</b> <em>proc'</em>
+<p>　
+<em>proc</em>
+内にある辞書・配列オブジェクトの生成コードをあらかじめ実行して、オブジェクトとして直接プロシージャ内に配置します。
+辞書を使ってプロシージャを切り替える場合に使用することを想定しています。
+例えば、
+<pre class="ps quote">
+/foo &lt;&lt;
+    1 { code-1 }
+    2 { code-2 }
+&gt;&gt; def
+
+/bar {
+    1 dict begin
+    /n exch def
+    //foo n get exec
+    end
+} bind def
+</pre>
+<p>は、
+<pre class="ps quote">
+/bar {
+    1 dict begin
+    /n exch def
+    &lt;&lt;
+        1 { code-1 }
+        2 { code-2 }
+    &gt;&gt; n get exec
+    end
+} bind def
+</pre>
+<p>とも書けますが、両者は等価ではありません。
+前者はパーサが
+<code class="ps">//foo</code>
+を読んだ時点でプロシージャ中に辞書オブジェクトを置き、実行時にはその辞書オブジェクトが使用されます。
+名前
+<code class="ps">foo</code>
+はプロシージャ中に残りません。
+後者は
+<code class="ps">bar</code>
+を実行するたびに辞書を生成します。
+実際、キーを何か適当なグローバルなオブジェクト名にしておくと、例えば
+<code class="ps">1</code>
+を
+<code class="ps">hoge</code>
+にしておくと、
+前者は
+<code class="ps">foo</code>
+を定義したときの
+<code class="ps">hoge</code>
+の値がキーとして使われますが、後者は
+<code class="ps">bar</code>
+を実行したときの
+<code class="ps">hoge</code>
+の値がキーとして使われます。
+辞書やプロシージャを定義したあとで
+<code class="ps">hoge</code>
+を変更した場合、前者は反映されませんが、後者は反映されるという違いが出ます。
+
+<p>　前者はswitchする位置とswitch先が離れているのと、辞書オブジェクトに名前をつけなければならないという欠点があります。
+後者はそのような面倒はありませんが、いちいち辞書を生成するので効率がよくありません。
+後者の
+<code class="ps">bar</code>
+を
+<b class="ps">expand-composite</b>
+に渡すと、
+<code class="ps">&lt;&lt; ... &gt;&gt;</code>
+の部分をこの時点で実行してしまい、結果として得られた辞書オブジェクトで置き換えてしまいます。
+結果として前者の
+<code class="ps">bar</code>
+と同じような効果が得られます。
+<pre class="ps quote">
+/bar {
+    1 dict begin
+    /n exch def
+    &lt;&lt;
+        1 { code-1 }
+        2 { code-2 }
+    &gt;&gt; n get exec
+    end
+} expand-composite def
+</pre>
+キーを適当なオブジェクト名で指定していた場合、キーは
+<b class="ps">expand-composite</b>
+を実行したときの値が使用されます。
+
+<p>　なお、
+<b class="ps">]</b>
+オペレータや
+<b class="ps">&gt;&gt;</b>
+オペレータを確実に判断するため、
+<em>proc</em>
+は必ず
+<b class="ps">bind</b>
+されます。
+また、
+<em>proc</em>
+内部にある
+<code class="ps">[ ... ]</code>
+と
+<code class="ps">&lt;&lt; ... &gt;&gt;</code>
+は、津々浦々、インライン配列や辞書の中だろうがサブプロシージャの中だろうがおかまいなしにオブジェクトに置き換えられます。
+展開されると困る配列・辞書がある場合は、
+<b class="ps">array</b>
+オペレータや
+<b class="ps">dict</b>
+オペーレータで明示的にオブジェクトを生成するか、別のプロシージャに追い出すかしてください。
+
+<p>　内部的には
+<em>proc</em>
+を
+<b class="ps">forall</b>
+で列挙して、
+<b class="ps">mark</b>
+オペレータを見つけたら
+<code class="ps">mark</code>
+オブジェクトを2個スタックに置き、
+<b class="ps">]</b>
+オペレータか
+<b class="ps">&gt;&gt;</b>
+オペーレータを見つけたらとりあえず
+<code class="ps">] cvx</code>
+として配列・辞書の生成部分を含んだプロシージャを作ってしまい、それを<b class="ps">exec</b>しています。
+配列の中に配列があったような場合、最初に
+<b class="ps">]</b>
+に出会ったときにまず子配列が配列オブジェクトに置き換えられ、次に
+<b class="ps">]</b>
+に出会ったときに子配列オブジェクトを含んだ配列オブジェクトが生成され、親配列が置き換えられることになります。
+途中で実行可能な配列を見つけた場合、
+<b class="ps">expand-composite</b>
+を再帰呼び出しします。
+
+
+<dt>strdup
+<dd>
+<p class="ps def"><em>str</em> <b class="ps">strdup</b> <em>str'</em>
+<p class="ps def"><em>name</em> <b class="ps">strdup</b> <em>str'</em>
+<p>　文字列を複製します。
+文字列オブジェクトが新たに生成されます。
+複製には
+<b class="ps">copy</b>
+ではなく
+<b class="ps">cvs</b>
+を使っているため、名前も文字列として複製できます。
+
+<dt>strcat
+<dd>
+<p class="ps def"><em>str1-or-name1</em> <em>str2-or-name2</em> <b class="ps">strcat</b> <em>str'</em>
+<p>　文字列もしくは名前を連結します。
+文字列オブジェクトが新たに生成されます。
+複製には
+<b class="ps">copy</b>
+ではなく
+<b class="ps">cvs</b>
+を使っているため、名前も文字列として複製できます。
+
+<p>　
+<em>str2</em>
+は結果を返す文字列を
+<b class="ps">getinterval</b>
+してから
+<b class="ps">cvs</b>
+で押し込んでいます。
+
+<dt>splitstring
+<dd>
+<p class="ps def"><em>str</em> <em>num</em> <b class="ps">splitstring</b> <em>tail</em> <em>head</em>
+<p>　文字列を分割します。
+<em>tail</em>
+・
+<em>head</em>
+は
+<em>str</em>
+の部分文字列です。
+<em>str</em>
+の先頭から
+<em>num</em>
+バイトを
+<em>head</em>
+に、残りの部分を
+<em>tail</em>
+に返します。
+
+<p>　
+<em>head</em>
+の方が後ろ（スタックトップ）に返るのは、
+<b class="ps">search</b>
+なんかと同じ理由です。
+つまり、
+<em>head</em>
+を処理し、残りの文字列についてさらに
+<b class="ps">splitstring</b>
+を呼び出して処理を続ける場合、いちいち
+<b class="ps">exch</b>
+しなくてよい、ということです。
+
+<dt>str2num
+<dd>
+<p class="def ps"><em>str</em> <b class="ps">str2num</b> <em>num</em>
+<p>　文字列
+<em>str</em>
+をビッグエンディアンバイト列と見なして数値に変換します。
+リトルエンディアンは
+<b class="ps">str2mun</b>
+にする、という構想があります。
+
+<dt>array2str
+<dd>
+<p class="def ps"><em>array</em> <b class="ps">array2str</b> <em>str</em>
+<p>　
+<em>array</em>
+内の数値を文字コードと見なして文字列を生成します。
+当然、
+<em>array</em>
+は文字列に
+<b class="ps">put</b>
+できる値からできていなければなりません。
+
+<dt>concatallstring
+<dd>
+<p class="def ps"><em>arrayofstr</em> <b class="ps">concatallstring</b> <em>str</em>
+<p>　
+<em>arrayofstr</em>
+には文字列の配列を指定します。
+<em>arrayofstr</em>
+に含まれる文字列を順に全部つなげた文字列を新たに生成して返します。
+
+<dt>isdigit
+<dd>
+<p class="def ps"><em>num</em> <b class="ps">isdigit</b> <em>bool</em>
+<p>　
+<em>num</em>
+が数字を示す文字コード（ASCIIコード）かどうかを調べ、
+<code class="ps">true</code>
+か
+<code class="ps">false</code>
+を返します。
+
+<dt>strtoupper
+<dd>
+<p class="def ps"><em>str</em> <b class="ps">strtoupper</b> <code>-</code>
+<p>　文字列
+<em>str</em>
+内の小文字を大文字に変換します。
+大文字・小文字はASCIIコードで判定されます。
+多バイト文字などは考慮されません。
+文字列オブジェクトを結果として返さないので、元の文字列をとっておく必要があります。
+
+<dt>copystr-toupper
+<dd>
+<p class="def ps"><em>str</em> <b class="ps">copystr-toupper</b> <em>str'</em>
+<p>　文字列
+<em>str</em>
+内の小文字を大文字に変換した文字列を新たに生成し、
+<em>str'</em>
+として返します。
+大文字・小文字はASCIIコードで判定されます。
+多バイト文字などは考慮されません。
+
+<dt>defaultget
+<dd>
+<p class="def ps"><em>dict</em> <em>key</em> <em>any</em> <b class="ps">defaultget</b> <em>any'</em>
+<p>　
+<em>dict</em>
+から
+<em>key</em>
+を探し、その値を返します。
+<em>key</em>
+が見つからなかった場合は
+<em>any</em>
+を返します。
+見つからなかったからといって
+<em>key</em>
+を新たに定義するようなことはしません。
+
+<dt>default-switch
+<dd>
+<p class="def ps"><em>key</em> <em>dict</em> <em>default</em> <b class="ps">default-switch</b> <code>-</code>
+<p>　
+<em>dict</em>
+から
+<em>key</em>
+を探し、その値を実行します。
+<em>key</em>
+が見つからなかった場合は
+<em>default</em>
+を実行します。
+<b class="ps">default-switch</b>
+自体は値を返しませんが、
+<b class="ps">default-switch</b>
+が実行したプロシージャが返した値はそのまま残ります。
+
+<b class="ps">defaultget</b>
+と違ってキーが先です。
+これはC言語の
+<code>switch</code>
+風に書くためですね。
+
+<pre class="quote ps">
+key &lt;&lt;
+    1 { code-1 }
+    2 { code-2 }
+&gt;&gt; {
+    code-3
+} default-switch
+</pre>
+
+<p>　
+<code class="ps">key</code>
+が1なら
+<code class="ps">code-1</code>
+を、2なら
+<code class="ps">code-2</code>
+を、どちらでもないなら
+<code class="ps">code-3</code>
+を（含むプロシージャを）実行します。
+<b class="ps">expand-composite</b>
+を一緒に使いたくなるかもしれません。
+
+<dt>ignore-switch
+<dd>
+<p class="def ps"><em>key</em> <em>dict</em> <b class="ps">ignore-switch</b> <code>-</code>
+<p>　
+<em>dict</em>
+から
+<em>key</em>
+を探し、その値を実行します。
+<em>key</em>
+が見つからなかった場合は何もしません。
+<b class="ps">ignore-switch</b>
+自体は値を返しませんが、
+<b class="ps">ignore-switch</b>
+が実行したプロシージャが返した値はそのまま残ります。
+キーを先に書く理由は
+<b class="ps">default-switch</b>
+と同じです。
+<b class="ps">expand-composite</b>
+が有用なのも同じ。
+
+<dt>exec-forall
+<dd>
+<p class="def ps"><em>obj</em> <em>proc</em> <b class="ps">exec-forall</b> <code>-</code>
+<p>　
+<em>obj</em>
+が配列なら
+<b class="ps">forall</b>
+を、そうでなければ
+<b class="ps">exec</b>
+を実行します。
+<em>obj</em>
+が配列ではなかった場合、1要素の配列と同じように扱うことができます。
+配列が1要素の場合は要素を配列にしないでそのまま渡せるようにしたりとか、あとから配列を指定できるように拡張した場合に有効です。
+
+<p>　
+<em>proc</em>
+を呼び出す際にスタックに配列の要素をひとつずつ置いて
+<em>proc</em>
+を実行していきますが、
+<em>proc</em>
+がスタックから値を取り除かなければ、その値はそのまま残り、次の
+<em>proc</em>
+呼び出し時には次の要素がさらにスタックに積まれます。
+また、
+<b class="ps">exec-forall</b>
+自体は値を返しませんが、
+<b class="ps">exec-forall</b>
+が実行したプロシージャが返した値はそのまま残ります。
+このあたりの挙動は
+<b class="ps">forall</b>
+と同じです。
+
+<dt>repeat-count
+<dd>
+<p class="def ps"><em>num</em> <em>proc</em> <b class="ps">repeat-count</b> <code>-</code>
+<p>　
+<b class="ps">repeat</b>
+と
+<b class="ps">for</b>
+のあいのこです。
+<em>num</em>
+で指定された回数だけ
+<em>proc</em>
+を実行します。
+<em>proc</em>
+実行時にスタックに 0 ～
+<em>num</em>
+-1
+までの整数を置きます。
+<em>proc</em>
+がスタックからこの値を取り除かなければ、その値はそのまま残り、次の
+<em>proc</em>
+呼び出し時には次の数値がさらにスタックに積まれます。
+また、
+<b class="ps">repeat-count</b>
+自体は値を返しませんが、
+<b class="ps">repeat-count</b>
+が実行したプロシージャが返した値はそのまま残ります。
+このあたりの挙動は
+<b class="ps">for</b>
+と同じです。
+
+<p>　中身は
+<b class="ps">for</b>
+で実装されているので
+<em>num</em>
+は実数でも大丈夫ですが、実数は終了判断でいろいろイヤなことが起きるので避けたほうが無難でしょう。
+
+<dt>protected-exec
+<dd>
+<p class="def"><em>proc</em> <b class="ps">protected-exec</b>
+<p>　
+<em>proc</em>
+を実行します。
+その際、辞書スタックの一番上にある辞書を一度取り除き、
+<em>proc</em>
+から戻ってきたら辞書スタックに戻します。
+つまり、
+<em>proc</em>
+呼び出し前に
+<b class="ps">end</b>
+を実行し、戻ってきたら
+<b class="ps">begin</b>
+を実行します。
+<b class="ps">protected-exec</b>
+実行前に辞書スタックの一番上にあった辞書に
+<code class="ps">exited</code>
+というキーが登録される副作用があります。
+
+<p>　「プロシージャを呼び出すちょっと複雑なプロシージャ」を作るときに便利です。
+例えば、
+<b class="ps">for-elem</b>
+は、
+<pre class="ps quote">
+/for-elem {
+    1 dict begin
+    /p exch def
+    /a exch def
+    0 1 a length 1 sub {
+        a exch /p load <b>protected-exec</b>
+    } for
+    end
+} bind def
+</pre>
+<p>と実装されています。
+<b class="ps">protected-exec</b>
+を使う理由はふたつあり、ひとつは
+<b class="ps">for-elem</b>
+が作った辞書を隠蔽するため、つまり、この例でいうと
+<em>proc</em>
+から
+<code class="ps">p</code>
+や
+<code class="ps">a</code>
+が見えないようにするため。
+こうしておかないと
+<em>proc</em>
+が
+<b class="ps">for-elem</b>
+実行前に定義された
+<code class="ps">p</code>
+や
+<code class="ps">a</code>
+を使うようになっていると正しく動かないでしょう。
+<b class="ps">protected-exec</b>
+を使うと
+<b class="ps">for-elem</b>
+の辞書のさらに外側の
+<code class="ps">p</code>
+や
+<code class="ps">a</code>
+が参照できます。
+もうひとつは
+<em>proc</em>
+が
+<b class="ps">def</b>
+したものが捨てられないようにするため、です。
+もし、
+<em>proc</em>
+が何かを
+<b class="ps">def</b>
+してしまうと、それは
+<b class="ps">for-elem</b>
+のおしまいにある
+<b class="ps">end</b>
+で捨てられてしまいます。
+<em>proc</em>
+で
+<b class="ps">store</b>
+してもらうようにすればいいのですが、人は忘れる・間違えるものです。
+そうならないように
+<em>proc</em>
+実行前に
+<b class="ps">end</b>
+してしまうわけです。
+
+<p>　以下は実装の話になります。
+じゃあ
+<em>proc</em>
+実行後に
+<b class="ps">begin</b>
+する辞書はどこから来るのかというと、
+<b class="ps">protected-exec</b>
+の内部で辞書（
+<b class="ps">currentdict</b>
+）の実体を置いたプロシージャをスタック上に生成して、それを
+<b class="ps">exec</b>
+しています。
+<b class="ps">exec</b>
+するとオペランドスタック上のプロシージャは実行スタックに移りますから、オペランドスタックはきれいになって、辞書は実行スタック上のプロシージャから参照されているので捨てられずにVMに残ることになります。
+実行が終わると
+<b class="ps">currentdict</b>
+がスタックに乗った状態になるので、ここで
+<b class="ps">begin</b>
+です。
+
+<p>　
+<b class="ps">for-elem</b>
+の場合、
+<b class="ps">for</b>
+でループしていますが、
+何も対策しない状態では
+<em>proc</em>
+が
+<b class="ps">exit</b>
+を実行すると
+<b class="ps">begin</b>
+を実行せずに直接
+<b class="ps">for</b>
+の後ろにすっ飛んでってしまいます。
+すると、
+<b class="ps">for-elem</b>
+が作った辞書が辞書スタックから取り除かれたままになってしまうので、
+<em>proc</em>
+を実行する部分を
+<code class="ps">1 { } repeat</code>
+で囲んで
+<b class="ps">exit</b>
+をフックしています。
+<b class="ps">exit</b>
+した場合にはこの
+<b class="ps">repeat</b>
+の直後に飛んでくるのですが、
+そのままでは
+<b class="ps">exit</b>
+したのかしていないのかが分かりません。
+そこで、
+<em>proc</em>
+実行前に
+<code class="ps">exited</code>
+を
+<code class="ps">true</code>
+に
+<b class="ps">def</b>
+しておき、
+<em>proc</em>
+から戻ってきた直後に
+<code class="ps">false</code>
+にします。
+<em>proc</em>
+の内部で
+<b class="ps">exit</b>
+が実行されると
+<code class="ps">false</code>
+にする部分が実行されないので、
+<b class="ps">repeat</b>
+の直後で
+<code class="ps">exited</code>
+が
+<code class="ps">true</code>
+ならば
+<b class="ps">exit</b>
+が実行されたことが分かります。
+この場合、辞書スタックを元に戻して、さらに外側のループ、つまり
+<b class="ps">for-elem</b>の
+<b class="ps">for</b>
+ループを抜けるために
+<b class="ps">exit</b>
+を再実行します。
+これが
+<code class="ps">exited</code>
+が定義される副作用の理由です。
+
+<p>　なお
+<b class="ps">stop</b>
+の場合には何も対策しなくても特に問題は起きないはずです。
+<b class="ps">for-elem</b>
+の場合を考えると、
+<em>proc</em>
+が
+<b class="ps">stop</b>
+を実行した場合、
+<b class="ps">for-elem</b>
+も
+<b class="ps">protected-exec</b>
+も
+<b class="ps">stopped</b>
+を実行しておらず、
+<b class="ps">protected-exec</b>
+が辞書を捨ててますから、何事もなかったように外側の
+<b class="ps">stopped</b>
+の後ろに飛ぶことになります。
+
+<dt>for-array
+<dd>
+<p class="def ps"><em>array</em> <em>proc</em> <b class="ps">for-array</b> <code>-</code>
+<p class="def ps"><em>str</em> <em>proc</em> <b class="ps">for-array</b> <code>-</code>
+<p>　
+<b class="ps">for</b>
+と
+<b class="ps">forall</b>
+の中間のような動きをします。
+<em>array</em>
+もしくは
+<em>str</em>
+と 0 ～ 要素数-1 までの整数値をスタックに置いて
+<em>proc</em>
+を呼び出します。
+プロシージャは
+<em>array</em>
+を取り除いてはいけません。
+
+<pre class="ps quote">
+a {
+    2 copy get 1 add
+    2 index 3 -2 roll put
+} for-elem
+</pre>
+
+<p>　整数値をスタックから取り除かなければ、その値はそのまま残り、次の
+<em>proc</em>
+呼び出し時には次の数値がさらにスタックに積まれます。
+また、
+<b class="ps">for-array</b>
+自体は値を返しませんが、
+<b class="ps">for-array</b>
+が実行したプロシージャが返した値はそのまま残ります。
+このあたりの挙動は
+<b class="ps">for</b>
+と同じです。
+
+<p>　
+<b class="ps">for-elem</b>
+も参照してください。
+多くの場合
+<b class="ps">for-elem</b>
+の方が使いやすいでしょう。
+
+<dt>for-elem
+<dd>
+<p class="def ps"><em>array</em> <em>proc</em> <b class="ps">for-elem</b> <code>-</code>
+<p class="def ps"><em>str</em> <em>proc</em> <b class="ps">for-elem</b> <code>-</code>
+<p>　
+<em>array</em>
+もしくは
+<em>str</em>
+と 0 ～ 要素数-1 までの整数値をスタックに置いて
+<em>proc</em>
+を呼び出します。
+プロシージャは
+オブジェクトと整数値を取り除く必要があります。
+ここが
+<b class="ps">for-array</b>
+と違うところです。
+つまり、いきなり
+<b class="ps">get</b>
+したり、ごにょごにょ値を計算して
+<b class="ps">put</b>
+したりできます。
+<pre class="ps quote">
+a {
+    2 copy get 1 add put
+} for-elem
+</pre>
+
+<p>　オブジェクトと整数値をスタックから取り除かなければ、取り除かなかった分はそのまま残り、次の
+<em>proc</em>
+呼び出し時には次のオブジェクトと数値がさらにスタックに積まれます。
+また、
+<b class="ps">for-elem</b>
+自体は値を返しませんが、
+<b class="ps">for-elem</b>
+が実行したプロシージャが返した値はそのまま残ります。
+このあたりの挙動は
+<b class="ps">for</b>
+と同じです。
+<em>proc</em>
+の実行には
+<b class="ps">protected-exec</b>
+を使っています。
+
+<dt>for-elem-rev
+<dd>
+<p class="def ps"><em>array</em> <em>proc</em> <b class="ps">for-elem-rev</b> <code>-</code>
+<p class="def ps"><em>str</em> <em>proc</em> <b class="ps">for-elem-rev</b> <code>-</code>
+<p>　
+<em>array</em>
+もしくは
+<em>str</em>
+と 要素数-1 から 0 までの整数値をスタックに置いて
+<em>proc</em>
+を呼び出します。
+数値の増減方向が逆になる以外は
+<b class="ps">for-elem</b>
+と同じです。
+
+<dt>num2str
+<dd>
+<p class="def ps"><em>num</em> <em>str</em> <b class="ps">num2str</b> <em>str</em>
+<p>　数値
+<em>num</em>
+をビッグエンディアンバイト列に変換し、
+<em>str</em>
+に設定します。
+返される
+<em>str</em>
+は引数として指定した
+<em>str</em>
+そのものです。
+リトルエンディアンは
+<b class="ps">mun2str</b>
+にする、という構想があります。
+
+<dt>expand-dict
+<dd>
+<p class="def ps"><em>arrayofdict</em> <em>proc</em> <b class="ps">expand-dict</b> <em>proc'</em>
+<p>　
+<em>arrayofdict</em>
+で指定された配列に含まれる辞書を
+<em>proc</em>
+の先頭に
+<b class="ps">begin</b>
+と共に順に埋め込み、さらに
+<em>proc</em>
+の末尾に対応する
+<b class="ps">end</b>
+を埋め込んだ新しいプロシージャを作成し、
+<em>proc'</em>
+として返します。
+サブルーチン辞書やProcSet辞書を埋め込む場合に便利です。
+
+<dt>bind-params
+<dd>
+<p class="def ps"><em>arrayofparams</em> <em>proc</em> <b class="ps">bind-params</b> <em>proc'</em>
+<p>　
+<em>arrayofparams</em>
+で指定された配列の各要素を、プロシージャ
+<em>proc</em>
+のパラメータ（引数）として順に埋め込んだ新たなプロシージャを作成し、
+<em>proc'</em>
+として返します。
+引数が必要なプロシージャ
+<code class="ps">A</code>
+を、他のプロシージャ
+<code class="ps">B</code>
+に渡す場合ような場合に便利です。
+
+<p>　例えば、ファイルを引数として1バイト取ってくる
+<b class="ps">getbyte</b>
+というプロシージャがあったとします。
+
+<pre class="quote ps">
+% file &lt;getbyte&gt; num
+/getbyte {
+    dup read not { /ioerror err } if
+    exch pop
+} bind def
+</pre>
+
+<p>　これを
+<em>proc</em> <b class="ps">someproc</b>
+という形式のプロシージャに渡したいとします。
+<b class="ps">getbyte</b>
+にはファイル引数が必要ですが、
+<b class="ps">someproc</b>
+は
+<b class="ps">getbyte</b>
+がどんな引数を取るかなんて知る由もありませんから、呼び出しの時には引数なしで
+<b class="ps">getbyte</b>
+を呼び出すことになります。
+これではきちんと動きません。
+
+<p>　そこで、あらかじめ引数を埋め込んだプロシージャを作成し、それを渡すようにします。
+
+<pre class="quote ps">
+(input-file) (r) file /getbyte load bind-params someproc
+</pre>
+
+<p>こうすると、生成されたプロシージャは、引数を渡さなくても、呼び出されるたびに
+<code class="ps">input-file</code>
+から1バイトずつ持ってくるようになります。
+
+<dt>copystring
+<dd>
+<p class="def ps"><em>str</em> <b class="ps">copystring</b> <em>str'</em>
+<p>　文字列を複製します。
+文字列オブジェクトが新たに生成されます。
+素直に
+<b class="ps">copy</b>
+でコピーしているので、名前をコピーすることはできません。
+<b class="ps">strdup</b>
+の方が使いやすいでしょう。
+
+<dt>copyarray
+<dd>
+<p class="def ps"><em>array</em> <b class="ps">copyarray</b> <em>array'</em>
+<p>　配列
+<em>array</em>
+をコピーして新たな配列
+<em>array'</em>
+を返します。
+
+<dt>
+<dd>
+<p class="def ps"><em>dict</em> <b class="ps">copydict</b> <em>dict'</em>
+<p>　辞書
+<em>dict</em>
+をコピーして新たな辞書
+<em>dict'</em>
+を返します。
+
+<dt>
+<dd>
+<p class="def ps"><em>dict</em> <em>any</em> <b class="ps">dictappend</b> <code>-</code>
+<p>　辞書
+<em>dict</em>
+に
+<em>any</em>
+を追加します。
+キーは
+<b class="ps">dictappend</b>
+を呼び出した時に
+<em>dict</em>
+が保持している要素数（整数値）が指定されます。
+つまり、
+<em>dict</em>
+が空なら0、ひとつ要素があれば1のように、
+<b class="ps">dictappend</b>
+を呼び出すたびにキーとなる整数値がひとつずつ増加していきます。
+可変長配列のように扱えます。
+最終的に
+<b class="ps">dict2array</b>
+を呼び出すと配列を得ることができます。
+
+<dt>dict2array
+<dd>
+<p class="def ps"><em>dict</em> <b class="ps">dict2array</b> <em>array</em>
+<p>　
+<b class="ps">dictappend</b>
+で要素を追加していった辞書
+<em>dict</em>
+を配列に変換します。
+<em>dict</em>
+のキーは0から始まる連続した整数でなければいけません。
+
+<dt>reversearray
+<dd>
+<p class="def ps"><em>array</em> <b class="ps">reversearray</b> <em>array'</em>
+<p>　配列
+<em>array</em>
+の要素の並びを逆にした配列を新たに作成し
+<em>array'</em>
+として返します。
+
+<dt>alength
+<dd>
+<p class="def ps"><em>array</em> <b class="ps">alength</b> <em>num</em>
+<p class="def ps"><em>any</em> <b class="ps">alength</b> <code class="ps">1</code>
+<p>　配列
+<em>array</em>
+の長さを返します。
+引数が配列ではなかった場合は1を返します。
+配列とそうではないオブジェクトを共通に扱えます。
+
+<dt>aget
+<dd>
+<p class="def ps"><em>array</em> <em>num</em> <b class="ps">aget</b> <em>any</em>
+<p class="def ps"><em>any</em> 0 <b class="ps">aget</b> <em>any</em>
+<p>　パラメータが配列だった場合は
+<b class="ps">get</b>
+と同じです。
+配列ではなかった場合は、
+<b class="ps">get</b>
+で添字に対応するパラメータが0であることを確認し、
+<em>any</em>
+をそのまま返します。
+添字に対応するパラメータが0ではない場合、
+<b class="ps">trap</b>
+が発生します。
+
+<dt>forward
+<dd>
+<p class="def ps"><em>file</em> <em>num</em> <b class="ps">forward</b> <code>-</code>
+<p>　ファイル
+<em>file</em>
+の位置を
+<em>num</em>
+だけ進めます。
+
+<dt>aprint
+<dd>
+<p class="def ps"><em>str</em> <b class="ps">aprint</b> <code>-</code>
+<p class="def ps"><em>name</em> <b class="ps">aprint</b> <code>-</code>
+<p class="def ps"><em>num</em> <b class="ps">aprint</b> <code>-</code>
+<p class="def ps"><em>bool</em> <b class="ps">aprint</b> <code>-</code>
+<p class="def ps"><em>array</em> <b class="ps">aprint</b> <code>-</code>
+<p>　便利なプリントプロシージャです。
+文字列・名前・数値・真偽値を指定した場合、その内容を適宜標準出力に出力します。
+実数値の場合、小数点以下6桁まで表示されます。
+
+<p>　配列を指定した場合、配列内の要素を次々と表示します。
+<b class="ps">aprint</b>
+のaはarrayのaです。
+配列内に辞書があった場合、その辞書を書式オプション指定とみなし、以後の印字に適用します。
+指定できるオプションは以下のとおりです。
+<table>
+<tr><th class="nowrap">キー<th class="nowrap">デフォルト<th>内容
+<tr><td class="c param-ps">A<td class="c param-ps">/right
+	<td>　表示内容が
+<code class="ps">W</code>
+で指定された幅より小さい場合の扱いを指定します。
+<code class="ps">/left</code>
+を指定すると左寄せになります。
+<code class="ps">/right</code>
+を指定すると右寄せになります。
+文字列を指定すると、負号の後ろを（負号がなければ先頭から）指定された文字列で埋めます。
+
+<tr><td class="c param-ps">P<td class="c param-ps">6
+	<td>　実数値を表示する場合に小数点以下の桁数を指定します。
+
+<tr><td class="c param-ps">S<td class="c param-ps">/char
+	<td>　文字列を表示する場合にフォーマットを指定します。
+<code class="ps">/char</code>
+を指定すると文字列をそのまま表示します。
+<code class="ps">/hex</code>
+を指定するとPostScriptの16進文字列形式で表示します。
+
+<tr><td class="c param-ps">R<td class="c param-ps">10
+	<td>　整数を表示する場合に基数（radix）を指定します。
+
+<tr><td class="c param-ps">W<td class="c param-ps">0
+	<td>　表示する最低文字数を指定します。
+
+</table>
+
+<p>　以下のように使用します。
+桁が分かるように等幅フォントで示します。
+
+<pre class="quote">
+[ (|) &lt;&lt; /W 10 /P 4 &gt;&gt; 1.0 ] aprint (|\n) print
+|    1.0000|
+[ (|) &lt;&lt; /W 10 /P 4 /A /left &gt;&gt; 1.0 ] aprint (|\n) print
+|1.0000    |
+[ (|) &lt;&lt; /W 10 /P 4 /A (0) &gt;&gt; -1.0 ] aprint (|\n) print
+|-0001.0000|
+[ &lt;&lt; /S /hex &gt;&gt; (123) ] aprint (\n) print
+&lt;313233&gt;
+[ (0x) &lt;&lt; /R 16 &gt;&gt; 256 (\n) ] aprint
+0x100
+[ 1 2 3 true false (\n) ] aprint
+123truefalse
+[ 1 (, ) 2 (, ) 3 (, ) true (, ) false (\n) ] aprint
+1, 2, 3, true, false
+</pre>
+
+<p>　フォーマット指定はそれ以降の配列要素すべてに有効であることに気をつけてください。
+例えば、
+<code class="ps">[ &lt;&lt; /W 10 /P 4 &gt;&gt; 1.0 (,\n) ] aprint</code>
+は期待通りの動きをしないでしょう。
+1.0だけでなく、
+カンマ（と改行）も10桁の幅で右寄せ表示されてしまうからです。
+0とカンマの間に8文字のスペースが入る結果となります。
+
+<dt>dstack
+<dd>
+<p class="def ps"><em>any</em> <b class="ps">dstack</b> <code>-</code>
+<p>　
+<b class="ps">pstack</b>
+でスタックをダンプします。
+<b class="ps">dump</b>
+と同様ですが、デバッグ設定の影響を受けません。
+タグ
+<em>any</em>
+を
+<b class="ps">aprint</b>
+で出力しますので、文字列ではなく、数値や名前をタグに使用できます。
+例えば、ループ内でスタックをダンプするときに、ループカウンタの値をタグに使用することもできます。
+
+<dt>dval
+<dd>
+<p class="def ps"><em>name</em> <b class="ps">dval</b> <code>-</code>
+<p>　
+<em>name</em>
+とその値を
+<b class="ps">aprint</b>
+で表示します。
+デバッグ設定の影響は受けません。
+<pre class="quote ps">
+&gt; /x 1 def
+&gt; x dval
+x=1
+</pre>
+
+<dt>ddict
+<dd>
+<p class="def ps"><em>dict</em> <em>any</em> <b class="ps">ddict</b> <em>dict</em>
+<p>　辞書をダンプします。
+デバッグ設定の影響は受けません。
+タグ
+<em>any</em>
+と辞書のキーは
+<b class="ps">aprint</b>
+で表示します。
+辞書の値は
+<b class="ps">print</b>
+で表示します。
+
+<dt>ckfile
+<dd>
+<p class="def ps"><em>filename</em> <b class="ps">ckfile</b> <em>file</em> <code class="ps">true</code>
+<p class="def ps"><em>filename</em> <b class="ps">ckfile</b> <code class="ps">false</code>
+<p>　
+<em>filename</em>
+を
+<b class="ps">file</b>
+オペレータに渡してみて、成功した場合はファイルオブジェクトと
+<code class="ps">true</code>
+を返します。
+<code class="ps">undefinedfilename</code>
+エラーが発生した場合は
+<code class="ps">false</code>
+を返します。
+それ以外の場合はエラーを再生成します。
+例えば、アクセス権に問題があった場合などは
+<code class="ps">invalidfileaccess</code>
+などのエラーが発生します。
+GhostscriptでSAFERモードを使用している場合、パスが通っていない場所を参照しようとすると、ファイルがあってもなくても
+<code class="ps">invalidfileaccess</code>
+が発生するため、実はあまり役に立ちません。
+
+</dl>
+
+<h2>DETAILED DESCRIPTION</h2>
+
+<h3>aprintの内部構造</h2>
+
+<p>　表示対象となる値の型をオプションにしたがって文字列に変換し、最後にアラインメント指定にしたがって文字数を調整し、
+<b class="ps">print</b>
+で表示します。
+
+<h4>浮動小数点表示</h4>
+
+<p>　
+<b class="ps">aprint-float-fixed</b>
+プロシージャが担当します。
+基本的にはマークとともに表示する文字の文字コードをスタック上に残していき、最後にそれをつなげてひとつの文字列にしています。
+文字列の内容は、符号、整数部、小数点、小数部になります。
+ビットパターンを正確に反映させるため、以下のような手順で表示する文字列を生成しています。
+
+<p>　符号部は表示する値の符号を調べ、負ならば
+<code class="ps">akamoz-number-encode</code>
+から
+<code class="ps">/Minus</code>
+を引いてスタックに残し、符号を反転します（つまり絶対値を取ります）。
+続いて小数点以下の表示桁数にしたがって値を丸め、整数部と小数部に分けます。
+これは
+<b class="ps">floor</b>
+を使って整数部を求めた後、元の値から整数部を引くことで小数部を得ています。
+この段階ではどちらの型も浮動小数のままです。
+
+<p>　整数部は、まず、上位側から256進分解します。
+これは1よりも小さくなるように浮動小数点演算で256で割っていき、続いて256倍しながら整数部をスタック上に残していきます。
+通常の浮動小数表現では256による乗除は仮数部は変化せず、指数部だけが8増減するので、これで仮数部のビットパターンそのものが得られたことになります。
+256進分解した結果は配列としてスタック上に残るようにします。
+それを、
+<b class="ps">aprint-longval-divmod10</b>
+により10で割りながら、あまりをスタック上に残し、配列にします。
+これで整数部の10進分解が終わりました。
+
+<p>　結果が空だった場合は整数部は0だったということなので、
+<code class="ps">akamoz-number-encode</code>から0に相当する文字コードを引いてスタック上に残します。
+そうでなければ、10進分解結果は配列内に下位桁から順に格納されているので、配列を後ろから読んで文字コードに変換していきます。
+
+<p>　次に
+<code class="ps">akamoz-number-encode</code>
+から
+<code class="ps">/Period</code>
+を引いてピリオドを打ち、小数部を変換します。
+小数部は必要な桁数だけ10倍しながら文字コードに変換していくだけです。
+
+<p>　すべて変換し終わったら
+<b class="ps">array2str</b>
+でひとつの文字列にします。
+
+<h4>名前・文字列</h4>
+
+<p>　名前は文字列に変換し、そのまま文字列として扱います。
+その後、
+<b class="ps">aprint-format-string</b>
+で前処理が行われます。
+
+<p>　オプション
+<code class="ps">S</code>
+が
+<code class="ps">/hex</code>
+だった場合は、PostScriptの16進文字列形式に変換します。
+文字列を
+<b class="ps">forall</b>
+で列挙し、
+<b class="ps">cvrs</b>
+で16進文字列に変換し、変換結果が1文字になっている場合（文字コードが0x10未満だった場合）は
+<code>0</code>
+を先頭に付け加えます。
+
+<h4>アラインメントと表示</h4>
+
+<p>　
+<b class="ps">aprint-align</b>
+で位置あわせを行いながら実際に文字列を表示します。
+
+<p>　まず、指定されたフィールド幅と、表示する文字列の文字数を比べます。
+フィールド幅が文字列の文字数以下ならば、文字列をそのまま表示します。
+そうでなければ、アラインメントパラメータを調べ、
+<code class="ps">/right</code>
+ならばフィールド幅と表示文字列の差だけ空白を表示してから文字列を表示します。
+<code>/left</code>
+ならば文字列を表示してから空白を表示します。
+
+<p>　アラインメントに文字列が指定されていた場合（位置あわせのために埋める文字が指定された場合）、表示する文字列の先頭がハイフンならば、ハイフンを表示してから位置合わせのための文字を表示し、その後、表示する文字列のハイフンより後ろの部分を表示します。
+そうでなければ単に位置合わせのための文字を表示し、表示する文字列を表示します。
+
+<p>　位置合わせのための文字の文字数は確認していないので、変な文字列を指定すると位置がおかしくなります。
+また、この処理は
+<b class="ps">aprint</b>
+に指定された値が数値でも文字列でも共通のため、文字列の先頭がハイフンだった場合にちょっとだけおかしな挙動になります。
+文字列
+<code>(-x)</code>
+をフィールド幅4で、アラインメントオプション
+<code class="ps">A</code>
+に
+<code>(!)</code>
+という文字列を指定すると、
+<code>!!-x</code>
+ではなく、
+<code>-!!x</code>
+という表示結果になります。
+
+</dl>
+
+<H2>AUTHOR</h2>
+<p>　Written by akamoz.jp
+
+<H2>COPYRIGHT</h2>
+<p>Copyright (c) 2016 akamoz.jp
+<p>All rights reserved.
+
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+<p>1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+<p>2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+<h2>SEE ALSO</h2>
+
+<p>gs(1)
+
+<p class="revision">$Id: dump-yuv4mpeg2.htm,v 1.1 2015/09/27 15:56:07 you Exp $
+</body>
+</html>

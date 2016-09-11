@@ -1,0 +1,238 @@
+/*
+ * Copyright (c) 2007-2015 akamoz.jp
+ * All rights reserved.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+h1, h2  {
+    font-family: Arial, "ü‡ÉSÉVÉbÉN", YuGothic,
+        "ÉqÉâÉMÉmäpÉS ProN W3", "Hiragino Kaku Gothic ProN",
+        "ÉÅÉCÉäÉI", sans-serif;
+    font-weight: normal;
+}
+
+h3, h4, h5, h6, dt, b, strong, th {
+    font-family: "ü‡ÉSÉVÉbÉN", YuGothic, "ÉqÉâÉMÉmäpÉS ProN W3",
+        "Hiragino Kaku Gothic ProN", sans-serif;
+    font-weight: bold;
+}
+
+body, table {
+    font-family: "Times New Roman", "ü‡ñæí©", YuMincho,
+        "ÉqÉâÉMÉmñæí© ProN W3", "Hiragino Mincho ProN",
+        "ÇlÇr ÇoÉSÉVÉbÉN", serif;
+}
+
+pre, code, .param {
+    font-family: "Courier New", "OsakaÅ|ìôïù", Osaka-mono,
+        "ÇlÇr ÉSÉVÉbÉN", "MS Gothic", monospace;
+    font-size: 100%;
+    font-weight: normal;
+}
+body {
+	margin-top: 4px;
+	margin-left: 1em;
+	margin-right: 4px;
+	-webkit-text-size-adjust: 100%;
+}
+h1, h2, h3 {
+	background-color: #eef;
+	border: solid #88f 1px;
+	border-color: #ddf #aaf #aaf #ddf;
+	color: #44c;
+	padding: 2px;
+	padding-left: 1ex;
+	margin-left: -0.5em;
+}
+
+h1 {
+	font-size: 150%;
+	margin-left: -0.4em;
+	text-align: center;
+}
+
+h2 {
+	font-size: 120%;
+	margin-top: 1em;
+	margin-bottom: 0.5em;
+}
+
+h3 {
+	border-top-color: #ddf;
+	border-left-color: #ddf;
+	background-color: transparent;
+	font-size: 120%;
+	margin-top: 1em;
+	margin-bottom: 0.5em;
+}
+
+h4 {
+	font-size: 100%;
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+	margin-left: -0.5em;
+}
+
+p {
+	line-height: 1.4;
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+.copyright, .revision {
+	text-align: right; font-size: 90%;
+}
+
+pre {
+	/* white-space: pre-wrap; */
+	overflow: auto;
+}
+
+.quote {
+	background-color: #eef;
+	border: 2px solid #aaf;
+	padding: 2px;
+	color: #004;
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+	margin-left: 0.5em;
+}
+
+em {
+	/* text-decoration: underline; */
+	font-family: "Times New Roman", serif;
+	font-style: oblique;
+}
+
+dt {
+	margin-top: 0.3em;
+	margin-bottom: 0.3em;
+}
+
+dd {
+	margin-bottom: 0.7em;
+	margin-left: 1.5em;
+}
+dd.cont {
+	margin-bottom: 0.3em;
+}
+code {
+	padding-left: 0.3em;
+	padding-right: 0.3em;
+}
+b.ps, .ps b {
+	font-weight: bold;
+	font-family: Arial, Helvetica, "Nimbus Sans", sans-serif;
+}
+.def {
+	font-family: Arial, Helvetica, "Nimbus Sans", sans-serif;
+	margin-bottom: 0em;
+	margin-top: 0em;
+	line-height: 1.2;
+}
+.def em {
+	padding-left: 0.3ex;
+	padding-right: 0.3ex;
+}
+table {
+	border: 1px solid #88f;
+	border-collapse: collapse;
+	margin-left: 0.5em;
+}
+th, td {
+	border: 1px solid #ccf;
+	padding: 3px;
+}
+.nr {
+	overflow: auto; white-space: nowrap; padding: 0px;
+	margin-left: 1em;
+}
+.nr table { margin: 0px; }
+.nowrap {
+	white-space: nowrap;
+}
+.c {
+	text-align: center;
+}
+p.ps em, p.ps b {
+	padding-left: 0.3ex;
+	padding-right: 0.3ex;
+	font-weight: normal;
+}
+p.ps b {
+	text-decoration: underline;
+}
+code.ps, pre.ps, .param-ps {
+	font-family: Arial, Helvetica, "Nimbus Sans", sans-serif;
+}
+h1 {
+	margin-top: 0px;
+}
+.navi {
+	float: right;
+	font-family: arial, sans-serif;
+	font-size: 12px;
+	font-weight: normal;
+	margin: 1px;
+}
+.navi a {
+	padding: 0px 1px 0px 1px;
+	border: solid #88f 1px;
+	background-color: #eef;
+	color: #44c;
+	text-decoration: none;
+}
+.navi :hover {
+	border-color: #88f;
+	background-color: #eef;
+	color: #44c;
+}
+p.topnavi {
+	display: block;
+	position: fixed; top: 8px; right: 8px;
+}
+@media screen and (max-width: 450px) {
+	span.navi { display: none; }
+	.fig img { width: 80%; }
+	dd {
+		margin-left: 0em; margin-top: 0.5em; margin-bottom: 1.5em;
+	}
+	dd.cont {
+		margin-bottom: 0.5em;
+	}
+	h1, h2, h3 {
+		padding: 2px;
+		font-size: 100%;
+		margin-left: -0.9em;
+		margin-right: -0.4em;
+	}
+	h1 {
+		font-size: 120%;
+		margin-top: 25px;
+		margin-left: -0.75em;
+		margin-right: -0.33em;
+	}
+	pre, .nr {
+		font-size: 80%;
+		margin: 1em 0em;
+	}
+}
