@@ -1,0 +1,264 @@
+<!doctype html>
+<!-- charproc-ps-akamoz.htm -->
+<html id="top">
+<head>
+	<meta name="viewport" content="initial-scale=1.0">
+	<meta charset="shift_jis">
+	<link rel="stylesheet" type="text/css" href="../manual.css">
+	<title>charproc.ps.akamoz.jp ProcSet resource</title>
+	<style type="text/css"><!--
+	--></style>
+</head>
+<body>
+<h1>charporc.ps.akamoz.jp ProcSet resource</h1>
+<p class="revision">Version 0.1.0.<small>0</small> (29 Feb 2016)
+<h2>NAME</h2>
+<p>
+<code>charproc.ps.akamoz.jp</code>
+(ProcSet) - 文字コード変換に関連するProcSetリソース
+
+<h2>SYNOPSIS</h2>
+<pre class="quote">
+/charproc.ps.akamoz.jp /ProcSet findresource begin
+...
+end
+</pre>
+
+<h2>DESCRIPTION</h2>
+
+<p>　文字コード変換に関するプロシージャを収めたProcSetリソースです。
+
+<h3>文字コードについて</h3>
+
+<p>　現状、以下の文字コードに対応しています。
+残念ながらシフトJISはありません（対応してもPostScriptファイル中での0x5Cの扱いが面倒なので、対応してもあまりメリットがない気がするので）。
+また、UTF16のようなバイト順序の指定が必要な文字コードはビッグエンディアンのみ対応しています（これも扱いが面倒であまりメリットがない気がするので）。
+
+<dl>
+<dt>EUC
+<dd>
+<p>　最初のバイトが0x80未満ならば、1バイトで1文字と見なします。
+0x80以上ならば2バイトで1文字とみなします。
+3バイト以上の文字には対応していません。
+
+<dt>UTF8
+<dd>
+<p>　1バイトから4バイト（U+10FFFF）まで使用できます。
+
+<dt>UCS2BE
+<dd>　常に2バイトです。
+UTF16と異なり、サロゲートペアを処理しません。
+U+FFFFまで使用できます。
+
+<dt>UTF16BE
+<dd>　通常（U+FFFFまで）は2バイトですが、サロゲートペアを使用した場合は4バイト（U+10000からU+10FFFFまで）になります。
+
+<dt>UTF32BE
+<dd>　常に4バイトです。
+U+10FFFFまで使用できます。
+
+</dl>
+
+<h2>CONSTANTS</h2>
+
+<dl>
+<dt>ProcSetVersion
+<dd>
+<p class="def ps">type: string
+<p>　ProcSetのバージョン。
+現在は
+<code class="ps">(0.1)</code>
+。
+今後、
+<code class="ps">0.2</code>
+・・・
+<code class="ps">0.3</code>
+のように増えていく予定です。
+<code class="ps">0.8</code>
+のあとは
+<code class="ps">0.900</code>
+となり、
+<code class="ps">0.998</code>
+のあとは
+<code class="ps">0.99900</code>
+のようになる予定です。
+このとおりにはならないかもしれませんが、少なくとも文字列の大小比較でバージョンの新旧が判断できる（文字列として比較したときにバージョンが古い方が小さい）ように付与します。
+
+<dt>ProcSetName
+<dd>
+<p class="ps def">type: string
+<p>　ProcSet名。
+<code class="ps">(charproc.ps.akamoz.jp)</code>
+。
+</dl>
+
+<h2>PROCEDURES</h2>
+
+<dl>
+<dt>charbytesEUC
+<dt>charbytesUTF8
+<dt>charbytesUCS2
+<dt>charbytesUTF16BE
+<dt>charbytesUTF32
+<dd>
+<p class="def ps"><em>str</em> <b class="ps">charbytesENCODING</b> <em>num</em>
+<p>　文字列
+<em>str</em>
+の最初の文字が何バイトかを調べて返します。
+例えば、文字列がEUCで最初の文字が「あ」ならば、
+<b class="ps">charbytesEUC</b>
+を呼ぶと2が返ります。
+文字列がUTF8で最初の文字が「あ」ならば、
+<b class="ps">charbytesUTF8</b>
+を呼ぶと3が返ります。
+文字列がUTF32で最初の文字が「あ」ならば、
+<b class="ps">charbytesUTF32</b>
+を呼ぶと4が返ります。
+
+<p>　USC2は常に2を、UTF32は常に4を返すので、エンディアンの区別はありません。
+UTF16はサロゲートペアの判断のためにエンディアンを指定する必要があります。
+
+<dt>decodeUTF8
+<dt>decodeUCS2BE
+<dt>decodeUTF16BE
+<dt>decodeUTF32BE
+<dd>
+<p class="def ps"><em>str</em> <b class="ps">decodeENCODING</b> <em>tail</em> <em>num</em>
+<p>　文字列
+<em>str</em>
+の最初の文字をデコードし、数値として返します。
+また、文字列
+<em>str</em>
+の2文字目以降を
+<em>tail</em>
+に返します。
+<em>num</em>
+はUnicodeのコードポイントそのものです。
+<em>tail</em>
+は
+<em>str</em>
+のサブ文字列です。
+
+<p>　例えば、
+<code class="ps">&lt;e38182e38184&gt;</code>
+（「あい」のUTF8表現）を
+<b class="ps">decodeUTF8</b>
+に渡すと、文字列
+<code class="ps">&lt;e38184&gt;</code>
+（「い」のUTF8表現）と数値16#3042（「あ」のUnicodeコードポイント）が返ります。
+
+<p>　なんでdecodeEUCがないかは聞かない。
+
+<dt>encodeUTF8
+<dt>encodeUCS2BE
+<dt>encodeUTF16BE
+<dt>encodeUTF32BE
+<dd>
+<p class="def ps"><em>num</em> <b class="ps">encodeENCODING</b> <em>str</em>
+<p>　
+<em>num</em>
+をUnicodeコードポイントと解釈して、文字列に変換します。
+文字列は新たに生成されます。
+例えば、16#3042（「あ」のUnicodeコードポイント）を
+<b class="ps">encodeUTF8</b>
+に渡すと、文字列
+<code class="ps">&lt;e38182&gt;</code>
+（「あ」のUTF8表現）
+が返ります。
+
+<dt>convertstring
+<dd>
+<p class="def ps"><em>str</em> <em>proc</em> <b class="ps">convertstring</b> <em>str'</em>
+<p>　文字列
+<em>str</em>
+の各文字を
+<em>proc</em>
+によって変換してすべてつなげて、新たな文字列
+<em>str'</em>
+として返します。
+<em>proc</em>
+は以下の形式で呼び出されます。
+
+<p class="def ps"><em>str</em> <b class="ps">proc</b> <em>strtail</em> <em>strchar</em>
+
+<p>　入力文字列
+<em>str</em>
+の先頭の文字をデコードし、その文字を新たな文字コードでエンコードして
+<em>strchar</em>
+として返します。
+2文字目以降を文字列
+<em>strtail</em>
+として返します。
+通常、
+<code class="ps">{ decodeUTF16BE encodeUTF8 }</code>
+のようなプロシージャを指定します。
+
+</dl>
+
+<h2>DEBUG</h2>
+
+<dl>
+<dt>localdebug
+<dd>
+<p class="ps def">type: procedure
+<p class="ps def">default:
+<code class="ps">{ pop }</code>
+<p>　
+<code class="ps">{ exec }</code>
+にするとリソースファイルのロード状況が分かります。
+リソースファイル内で直接定義されているので外部から変更することはできません。
+
+<dt>trap
+<dd>
+<p class="ps def">type: procedure
+<p class="ps def">default: not defined
+<p>　内部でエラーが起きたときに呼び出すプロシージャです。
+パラメータとしてエラー情報を示す名前をスタックに置いて呼び出します。
+デフォルトでは定義されていません。
+ユーザー側で定義することで若干のエラー処理が可能ですが、
+<b class="ps">trap</b>
+から戻っても処理が継続できるわけではありません。
+通常は強制終了するしかないでしょう。
+
+</dl>
+
+<H2>SECURITY</h2>
+
+<p>　Unicode系の
+<b class="ps">charbytesENCODING</b>
+はUnicodeとして有効なバイト列かどうかは判断していません。
+例えば、U+1000のUTF8での表現は通常
+<code class="ps">&lt;E1C0C0&gt;</code>
+ですが、
+<code class="ps">&lt;F0C1C0C0&gt;</code>
+を何も考えずにデコードしてもU+1000になります。
+<b class="ps">charbytesUTF8</b>
+では前者に対して3、後者に対して4を返すのみで、エラーになりません。
+ただし、先頭バイトが16#80から16#C1までの場合はトラップが発生します。
+
+<p>　
+<b class="ps">decodeENCODING</b>
+では有効なバイトシーケンスかどうかの検証もしており、誤ったバイトシーケンスに対してはtrapが発生します。
+
+<H2>AUTHOR</h2>
+<p>　Written by akamoz.jp
+
+<H2>COPYRIGHT</h2>
+<p>Copyright (c) 2016 akamoz.jp
+<p>All rights reserved.
+
+<p>Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+<p>1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+<p>2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+<p>THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+<h2>SEE ALSO</h2>
+
+<p>gs(1)
+
+<p class="revision">$Id: dump-yuv4mpeg2.htm,v 1.1 2015/09/27 15:56:07 you Exp $
+</body>
+</html>
