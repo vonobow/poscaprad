@@ -340,8 +340,8 @@ subr begin
 
 % decode table for platform ID 3
 /ttfNameDecodePF3 <<
-	1 { decodeUCS2 }
-%	10 { decodeUTF32 }	is actually UTF-16, isn't it??
+	1 { decodeUCS2BE }
+%	10 { decodeUTF32BE }	is actually UTF-16, isn't it??
 >> def
 
 /ttfNameDecode <<
