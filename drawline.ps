@@ -429,13 +429,21 @@ begin % caller's dict
 	dup type /dicttype eq { /opt exch def } { /opt 0 dict def } ifelse
 	/height exch def
 	/str exch def
-	str length 0 eq { exit } if
+
+	/calconly opt /CalcOnly false defaultget def
+	str length 0 eq {
+		opt /CharCount 0 put
+		opt /StringHeight 0 put
+		calconly not {
+			opt /DrawingHeight 0 put
+		} if
+		exit
+	} if
 
 	/hstr opt /HeightString (fg) defaultget def
 	/align opt /Align /Top defaultget def
 	/cont opt /Continue false defaultget def
 	/adj null def
-	/calconly opt /CalcOnly false defaultget def
 	/mtx matrix def
 
 	% 文字列を分解して配列に、置換する文字列は置換。
