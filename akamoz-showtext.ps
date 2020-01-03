@@ -152,8 +152,20 @@ currentdict end
 	end % util.ps.akamoz.jp
 } bind def
 
+/showtext.ps.akamoz.jp currentdict /ProcSet defineresource pop
+end % showtext.ps.akamoz.jp
+end % localdict
+setglobal
+
 % test code
 {
+	currentdict
+	(akamoz-ttfproc.ps) runlibfile
+	(akamoz-util.ps) runlibfile
+	/ttfproc.ps.akamoz.jp /ProcSet findresource begin
+	/util.ps.akamoz.jp /ProcSet findresource begin
+	/showtext.ps.akamoz.jp /ProcSet findresource begin
+	begin
 	72 -72 scale
 	0.5 -10.5 translate
 	/vertfont /DFPKaiSho-Md /EUC-V ttfComposeVerticalFont
@@ -170,9 +182,5 @@ currentdict end
 	gsave 0.05 setlinewidth 1 setlinecap 0 0 rlineto stroke grestore
 	(¡ª) show
 	showpage
+	end end end end
 } pop
-
-/showtext.ps.akamoz.jp currentdict /ProcSet defineresource pop
-end % showtext.ps.akamoz.jp
-end % localdict
-setglobal
