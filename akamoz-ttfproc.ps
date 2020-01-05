@@ -58,6 +58,7 @@ true setglobal
 } bind def
 
 /n2 { b2 str2num } bind def
+/i2 { n2 dup 16#8000 ge { 16#10000 sub } if } bind def
 /n4 { b4 str2num } bind def
 /off2 { n2 Offset add } bind def
 /off4 { n4 Offset add } bind def
@@ -425,6 +426,7 @@ end % subr
 		dup begin
 			14 fwd /UnitsPerEm n2 def
 			[ ( funit=) UnitsPerEm ] aprintDebug
+			30 fwd /IndexToLocFormat n2 def
 		end
 	} retr pop
 	end
@@ -572,12 +574,16 @@ subr begin
 	ttfReadMaxpTable
 	OffsetTable id {
 		/AdvanceDistance xhea /NumberOfMetrics get array def
+		/LeftSideBearing NumGlyphs array def
 		[ (\n  values:) ] aprintMoreVerbose
 		AdvanceDistance {
 			n2 UnitsPerEm div
+			LeftSideBearing 2 index i2 UnitsPerEm div put
 			[ ( ) 2 index ] aprintMoreVerbose put
-			2 fwd
 		} for-elem
+		AdvanceDistance length 1 NumGlyphs 1 sub {
+			LeftSideBearing exch i2 UnitsPerEm div put
+		} for
 	} retr
 	end end
 } bind def
@@ -953,6 +959,47 @@ end % subr
 	end
 } prepproc bind def
 
+% ttfdict <ttfReadGlyhTable> ttfdict offset
+%	just cache offset
+/ttfReadGlyhTable {
+	dup begin
+	OffsetTable /glyf { } retr /Offset get
+	end
+} bind def
+
+% ttfdict <ttfReadLocaTable> ttfdict locadict
+/ttfReadLocaTable {
+	dup begin
+	OffsetTable /loca {
+		FontFile Length string readstring
+		not { /ttf-fail-to-read-loca trap } if
+		/Data exch def
+	} retr
+	end
+} bind def
+
+% ttfdict <ttfCreateXMinTable> ttfdict xmintable
+/ttfCreateXMinTable {
+	dup begin 1 dict begin
+	ttfReadGlyhTable /goff exch def
+	ttfReadLocaTable /Data get /Data exch def
+	IndexToLocFormat 1 eq {
+		/elemsize 4 def
+		/posmul 1 def
+	} {
+		/ttf-unsupported-indexToLocFormat trap
+	} ifelse
+	/xmintable NumGlyphs array def
+	0 1 NumGlyphs 1 sub {
+		Data 1 index elemsize getstrarray	% i str bool
+		not { /ttf-loca-ovf trap } if	% i str
+		str2num	posmul mul goff add	setpos	% i
+		2 fwd n2 dup 16#8000 ge { 16#10000 sub } if	% i num
+		UnitsPerEm div xmintable 2 index 2 index put pop pop % -
+	} for
+	xmintable end end
+} bind def
+
 % font cmap <ttfFixupVerticalMode> font'
 /ttfFixupVerticalMode {
 	currentglobal false setglobal
@@ -1058,9 +1105,11 @@ end % subr
 
 	1 dict begin	% dict for CDevProc
 	(creating CDevProc ... ) aprintDebug
-	ttfdict ttfReadOS2Table
+	ttfdict ttfReadHeadTable ttfReadMaxpTable ttfReadOS2Table
+	ttfCreateXMinTable /xmintable exch def
 	dup /TypoAscender get /vy exch def
-	ttfReadHmtxTable /AdvanceDistance get /hw exch def
+	ttfReadHmtxTable dup /AdvanceDistance get /hw exch def
+	/LeftSideBearing get /lsb exch def
 	/hwmax hw length 1 sub def
 	/CIDMap CIDMap def
 	/GDBytes GDBytes def
@@ -1085,7 +1134,7 @@ end % subr
 			a 1 0 put
 			a 6 0 put
 			a 7 g vwmax lt { vw g get } { vw vwmax get } ifelse neg put
-			a 8 a 0 get 0.5 mul put
+			a 8 a 2 get lsb g get sub a 0 get 0.5 mul add put
 			a 9 vy put
 			% cid 1 and 231 is half width space.
 			% change height to its width in case of vertical writing.
