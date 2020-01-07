@@ -959,13 +959,14 @@ end % subr
 } prepproc bind def
 
 
-% font cmap <ttfFixupVerticalMode> font'
+% font cmap optdict <ttfFixupVerticalMode> font'
 /ttfFixupVerticalMode {
 	currentglobal false setglobal
 	1 dict begin % dictionary is in local VM.
 	/gflag exch def
 	true setglobal % make VM mode global until getting necessary resources.
 
+	/opt exch def
 	dup type /dicttype eq { /CMapName get } if
 	/cmapname exch def
 	dup type /dicttype eq {
@@ -1067,11 +1068,16 @@ end % subr
 	ttfdict ttfReadOS2Table
 	dup /TypoAscender get /vy exch def
 	ttfReadHmtxTable dup /AdvanceDistance get /hw exch def
-	/LeftSideBearing get /lsb exch def
+	opt /UseLeftSideBearing false defaultget
+	dup /uselsb exch def {
+		dup /LeftSideBearing get /lsb exch def
+	} if
+	pop
 	/hwmax hw length 1 sub def
 	/CIDMap CIDMap def
 	/GDBytes GDBytes def
 	/getstrarray dup load def
+	/exec-forall dup load def
 	/str2num dup load def
 	/vmtx ttfCheckSupport {
 		ttfReadVmtxTable /AdvanceDistance get /vw exch def
@@ -1092,7 +1098,11 @@ end % subr
 			a 1 0 put
 			a 6 0 put
 			a 7 g vwmax lt { vw g get } { vw vwmax get } ifelse neg put
-			a 8 a 2 get lsb g get sub a 0 get 0.5 mul add put
+			uselsb {
+				a 8 a 2 get lsb g get sub a 0 get 0.5 mul add put
+			} {
+				a 8 a 0 get 0.5 mul put
+			} ifelse
 			a 9 vy put
 			% cid 1 and 231 is half width space.
 			% change height to its width in case of vertical writing.
@@ -1114,36 +1124,42 @@ end % subr
 } prepproc bind def
 
 % fontname cmapname <ttfComposeVerticalFont> font
+% fontname cmapname optdict <ttfComposeVerticalFont> font
 /ttfComposeVerticalFont {
-	2 dict begin
+	3 dict begin
+	dup type /dicttype ne { << >> } if
+	/opt exch def
 	/cmapname exch def
 	/fontname exch def
 	fontname strdup (-) strcat cmapname strdup strcat
-	cmapname [ fontname cmapname ttfFixupVerticalMode ] composefont
+	cmapname [ fontname cmapname opt ttfFixupVerticalMode ] composefont
 	end
 } prepproc bind def
 
 % fontname cmapname <ttfFindVerticalFont> font
+% fontname cmapname optdict <ttfFindVerticalFont> font
 %	find verticalfont specified by fontname and cmapname from
 %	ttfVerticalFontCache. If the font is not found in the cache,
 %	call ttfComposeVerticalFont and cache it.
 %	ttfVerticalFontCache is created in userdict automatically.
 /ttfFindVerticalFont {
+	dup type /dicttype ne { << >> } if
 	currentglobal false setglobal
-	5 dict begin
+	6 dict begin
 	/PreviousGlobal exch def
 	userdict /ttfVerticalFontCache 2 copy known {
 		get /fontcache exch def
 	} {
 		1 dict dup /fontcache exch def put
 	} ifelse
+	/opt exch def
 	/cmapname exch def
 	/fontname exch def
 	/vcfn fontname <00> strcat cmapname strcat def
 	fontcache vcfn known {
 		fontcache vcfn get
 	} {
-		fontname cmapname ttfComposeVerticalFont
+		fontname cmapname opt ttfComposeVerticalFont
 		fontcache vcfn 2 index put
 	} ifelse
 	PreviousGlobal setglobal
@@ -1215,7 +1231,7 @@ setglobal
 			( ) show
 			VCmap strdup show
 
-			f VCmap ttfFixupVerticalMode pop
+			f VCmap << >> ttfFixupVerticalMode pop
 
 			currentglobal false setglobal
 			/test-V VCmap [ f ] composefont setfont
