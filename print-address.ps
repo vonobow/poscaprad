@@ -25,7 +25,7 @@
 % ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 % POSSIBILITY OF SUCH DAMAGE.
 
-/printAddressDebug { exec } def
+/printAddressDebug { pop } def
 /print-address-version (0.1) def
 /print-address-filename (print-address.ps) def
 
@@ -242,7 +242,7 @@ NoDefaultScript not {
 	/current-linepitch exch def
 	/current-fontsize exch def
 	findfont current-fontsize scalefont /drawline-hfont exch def
-	CMapName ttfFindVerticalFont
+	CMapName << /UseLeftSideBearing false >> ttfFindVerticalFont
 	current-fontsize scalefont setfont
 	hyphen-fontname findfont current-fontsize scalefont
 	/drawline-hyphen-font exch def
@@ -387,7 +387,7 @@ encoding /EUC eq {
 	(utf8-settings.ps) runlibfile
 } {
 	/encoding trap
-} ifelse }ifelse
+} ifelse } ifelse
 /substtable drawline-substtable def
 
 << /PageSize [ paper-width paper-height ] >> setpagedevice
