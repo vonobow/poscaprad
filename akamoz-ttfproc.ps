@@ -978,8 +978,9 @@ end % subr
 	end
 } bind def
 
-% ttfdict <ttfCreateXMinTable> ttfdict xmintable
-/ttfCreateXMinTable {
+% ttfdict <ttfCreateBBoxTable> ttfdict bboxtable
+%	bboxtable[glyphindex] = [ xmin ymin xmax ymax ]
+/ttfCreateBBoxTable {
 	dup begin 1 dict begin
 	ttfReadGlyhTable /goff exch def
 	ttfReadLocaTable /Data get /Data exch def
@@ -989,15 +990,15 @@ end % subr
 	} {
 		/ttf-unsupported-indexToLocFormat trap
 	} ifelse
-	/xmintable NumGlyphs array def
+	/bboxtable NumGlyphs array def
 	0 1 NumGlyphs 1 sub {
 		Data 1 index elemsize getstrarray	% i str bool
 		not { /ttf-loca-ovf trap } if	% i str
 		str2num	posmul mul goff add	setpos	% i
-		2 fwd n2 dup 16#8000 ge { 16#10000 sub } if	% i num
-		UnitsPerEm div xmintable 2 index 2 index put pop pop % -
+		bboxtable exch % bboxtable i
+		2 fwd [ 4 { i2 UnitsPerEm div } repeat ] put % -
 	} for
-	xmintable end end
+	bboxtable end end
 } bind def
 
 % font cmap optdict <ttfFixupVerticalMode> font'
@@ -1106,14 +1107,17 @@ end % subr
 
 	1 dict begin	% dict for CDevProc
 	(creating CDevProc ... ) aprintDebug
+	/aprintVerbose dup load def
+	/ttfprocVerbose dup load def
 	ttfdict ttfReadHeadTable ttfReadMaxpTable ttfReadOS2Table
-	ttfCreateXMinTable /xmintable exch def
+	ttfCreateBBoxTable /bbox exch def
 	dup /TypoAscender get /vy exch def
 	ttfReadHmtxTable dup /AdvanceDistance get /hw exch def
 	opt /UseLeftSideBearing false defaultget
-	dup /uselsb exch def {
+	dup /uselsb exch def pop true {
 		dup /LeftSideBearing get /lsb exch def
 	} if
+	opt /VOrgFromVAdvance false defaultget /usevadv exch def
 	pop
 	/hwmax hw length 1 sub def
 	/CIDMap CIDMap def
@@ -1122,7 +1126,8 @@ end % subr
 	/exec-forall dup load def
 	/str2num dup load def
 	/vmtx ttfCheckSupport {
-		ttfReadVmtxTable /AdvanceDistance get /vw exch def
+		ttfReadVmtxTable dup /AdvanceDistance get /vw exch def
+		/LeftSideBearing get /tsb exch def
 		/vwmax vw length 1 sub def
 	} {
 		(no vmtx table, use fixed vertical pitch, ) aprintDebug
@@ -1145,7 +1150,15 @@ end % subr
 			} {
 				a 8 a 0 get 0.5 mul put
 			} ifelse
-			a 9 vy put
+			[ g ( ) bbox g get { ( ) } forall lsb g get ( ) tsb g get ( ) a 7 get (\n) ] aprintVerbose
+			% a 9 vy put
+			usevadv {
+%				a 9 bbox g get dup 3 get exch 1 get add
+%					a 7 get sub 0.5 mul put
+				a 9 a 7 get neg tsb g get add put
+			} {
+				a 9 tsb g get bbox g get 3 get add put
+			} ifelse
 			% cid 1 and 231 is half width space.
 			% change height to its width in case of vertical writing.
 			false [ 1 231 ] { cid eq { pop true exit } if } forall
@@ -1301,6 +1314,6 @@ setglobal
 	end % ttfproc.ps.akamoz.jp
 
 	/end dstack
-	[ (dictstack depth: ) countdictstack (\n) ] aprint
+	[ (dictstack depth: ) countdictstack (\n) ] aprintDebug
 	end
 } pop
