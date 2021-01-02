@@ -242,7 +242,19 @@ NoDefaultScript not {
 	/current-linepitch exch def
 	/current-fontsize exch def
 	findfont current-fontsize scalefont /drawline-hfont exch def
+true {
 	CMapName << /UseLeftSideBearing false >> ttfFindVerticalFont
+} {
+	% use ghostscript native font mapping.
+	% caution: ghostscript's vertical font origin is incorrect.
+	dup length CMapName length add 1 add string % vfontname str
+	1 index length % vfontname str length(vfontname)
+	2 copy 1 add CMapName dup length string cvs putinterval % SAA
+	2 copy (-) putinterval % SAA
+	string 2 index exch cvs % vfontname str (vfontname)
+	1 index 0 2 index putinterval % vfontname str (vfontame)
+	pop exch pop findfont
+} ifelse
 	current-fontsize scalefont setfont
 	hyphen-fontname findfont current-fontsize scalefont
 	/drawline-hyphen-font exch def
