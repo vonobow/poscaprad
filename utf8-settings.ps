@@ -25,6 +25,7 @@
 % ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 % POSSIBILITY OF SUCH DAMAGE.
 
+/drawline-hyphen-char (-) setdef
 /drawline-substtable <<
 	(1)	(一)
 	(2) (二)
@@ -38,7 +39,9 @@
 	(0) (〇)
 	[ (A) (Z) expandstrrange ] /rot expandarrayval
 	[ (a) (z) expandstrrange ] /rot expandarrayval
-	(-) [ /rot /hfont /drawline-hyphen-font /hstr true ]
+	(-) [ drawline-hyphen-char /rot /hfont /drawline-hyphen-font
+		/hstr true
+	]
 >> setdef
 
 /title-aft-default (様) setdef
